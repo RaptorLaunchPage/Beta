@@ -6,7 +6,15 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "migrate": "node scripts/migrate.js",
+    "migrate:ts": "npx ts-node scripts/migrate.ts",
+    "migrate:up": "node scripts/migrate.js up",
+    "migrate:down": "node scripts/migrate.js down",
+    "migrate:status": "node scripts/migrate.js status",
+    "migrate:create": "node scripts/migrate.js create",
+    "migrate:validate": "npx ts-node scripts/migrate.ts validate",
+    "migrate:setup": "node scripts/setup-migrations.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
