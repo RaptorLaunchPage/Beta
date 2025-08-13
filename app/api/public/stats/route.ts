@@ -1,0 +1,52 @@
+import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+export async function GET() {
+  try {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+    const [teamsCountRes, playersCountRes, matchesCountRes, winsCountRes, expensesSumRes] = await Promise.all([
+      supabase.from('teams').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'player').eq('status', 'Active'),
+      supabase.from('performances').select('*', { count: 'exact', head: true }),
+      supabase.from('performances').select('*', { count: 'exact', head: true }).eq('placement', 1),
+      supabase.from('slot_expenses').select('total')
+    ])
+
+    const activeTeams = (teamsCountRes.count || 0)
+    const activePlayers = (playersCountRes.count || 0)
+    const liveMatches = (matchesCountRes.count || 0)
+    const liveWWCD = (winsCountRes.count || 0)
+    const expenses = (expensesSumRes.data || []) as Array<{ total: number | null }>
+    const expensesSum = expenses.reduce((sum, e) => sum + (e.total || 0), 0)
+
+    // Base figures
+    const baseUnderdogPractice = 37800
+    const baseMatches = 3240
+    const baseWWCD = 1134
+
+    const costCovered = baseUnderdogPractice + expensesSum
+    const totalMatches = baseMatches + liveMatches
+    const totalWWCD = baseWWCD + liveWWCD
+
+    return NextResponse.json({
+      success: true,
+      stats: {
+        activeTeams,
+        activePlayers,
+        totalMatches,
+        totalWWCD,
+        costCovered
+      }
+    })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Failed to load stats' }, { status: 500 })
+  }
+}
