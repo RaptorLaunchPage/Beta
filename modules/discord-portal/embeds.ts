@@ -30,7 +30,7 @@ const getBaseEmbed = (type: MessageType): Pick<DiscordEmbed, 'color' | 'timestam
   timestamp: new Date().toISOString(),
   footer: {
     text: 'Raptor Esports CRM',
-    icon_url: process.env.NEXT_PUBLIC_RAPTOR_LOGO_URL || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=64&h=64&fit=crop&crop=center'
+    icon_url: process.env.NEXT_PUBLIC_RAPTOR_LOGO_URL || ''
   }
 })
 

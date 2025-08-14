@@ -97,8 +97,8 @@ export async function sendToDiscord({
     // Create the Discord payload
     const payload: DiscordWebhookPayload = {
       embeds: [embed],
-      username: 'Raptor Esports CRM',
-      avatar_url: 'https://cdn.discordapp.com/embed/avatars/0.png' // Replace with actual bot avatar
+      username: process.env.NEXT_PUBLIC_DISCORD_BOT_NAME || 'Raptor Esports CRM',
+      avatar_url: process.env.NEXT_PUBLIC_DISCORD_BOT_AVATAR_URL || undefined as any
     }
 
     // Send to all applicable webhooks

@@ -69,21 +69,18 @@ function AuthConfirmContent() {
       }, 1000)
       
       // Add timeout fallback in case auth hook doesn't trigger
-      const timeoutId = setTimeout(() => {
-        console.log('⚠️ Auth confirmation timeout - checking auth state...')
+      const timeoutId = setTimeout(async () => {
+        console.log('⚠️ Auth confirmation timeout - forcing session processing...')
         setAuthProgress('Finalizing...')
-        
-        if (user && profile) {
-          const redirectPath = profile.role === 'pending_player' && !profile.onboarding_completed 
-            ? '/onboarding' 
-            : '/dashboard'
-          console.log(`🚀 Timeout fallback: Redirecting to ${redirectPath}`)
-          router.push(redirectPath)
-        } else {
-          console.log('⚠️ No auth state after timeout, redirecting to homepage')
-          router.push('/')
-        }
-      }, 5000) // 5 second timeout
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.user) {
+            await authFlowV2.handleSupabaseSession(session)
+          }
+        } catch (e) {}
+        const target = (profile?.role === 'pending_player' && !profile?.onboarding_completed) ? '/onboarding' : '/dashboard'
+        router.replace(target)
+      }, 3000) // shorter timeout for better UX
       
       return () => {
         clearTimeout(timeoutId)
@@ -136,6 +133,14 @@ function AuthConfirmContent() {
       handleAuthConfirmation()
     }
   }, [searchParams, router, toast, user, profile, isLoading])
+
+  // Final safety: if authenticated and has profile, immediately go to dashboard
+  useEffect(() => {
+    if (user && profile && !isLoading) {
+      const redirectPath = profile.role === 'pending_player' && !profile.onboarding_completed ? '/onboarding' : '/dashboard'
+      router.replace(redirectPath)
+    }
+  }, [user, profile, isLoading, router])
 
   // Additional effect to ensure redirect happens even if main effect misses it
   useEffect(() => {

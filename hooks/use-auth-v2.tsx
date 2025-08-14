@@ -200,80 +200,15 @@ const AuthProviderV2 = memo(function AuthProviderV2({ children }: { children: Re
     }
   }, [authState.isAuthenticated, authState.isLoading, authState.profile, router])
 
-  // Initialize auth flow on mount
+  // Initialize auth flow on mount is fully handled by RouteGuardV2 to avoid double init flicker
   useEffect(() => {
-    let initTimeout: NodeJS.Timeout | null = null
-    
-    const initializeAuth = async () => {
-      try {
-        console.log('🚀 Auth hook: Checking if initialization needed...')
-        
-        // Don't initialize if route guard is handling it
-        // Route guard will initialize for protected routes
-        const currentPath = window.location.pathname
-        const isPublicRoute = ['/', '/auth/login', '/auth/signup', '/auth/confirm', '/auth/forgot', '/auth/reset-password'].some(route => {
-          if (route === '/') return currentPath === '/'
-          return currentPath.startsWith(route)
-        })
-        
-        if (isPublicRoute) {
-          console.log('🏠 Auth hook: On public route, letting route guard handle auth initialization')
-          return
-        }
-        
-        // Only initialize for protected routes if not already initialized
-        const currentState = authFlowV2.getState()
-        if (currentState.isInitialized && !currentState.isLoading) {
-          console.log('✅ Auth hook: Already initialized, skipping')
-          return
-        }
-        
-        console.log('🚀 Auth hook: Performing initialization...')
-        const result = await authFlowV2.initialize(false)
-        
-        if (!mounted.current) return
-        
-        // Only redirect if explicitly needed and not on a public route
-        if (result.success && result.shouldRedirect && result.redirectPath) {
-          const currentPath = window.location.pathname
-          
-          if (currentPath !== result.redirectPath) {
-            console.log('🔄 Auth hook: Redirecting to:', result.redirectPath)
-            
-            initTimeout = setTimeout(() => {
-              if (mounted.current) {
-                safeRedirect(result.redirectPath!, { delay: 1000 })
-              }
-            }, 1000)
-          }
-        }
-      } catch (error: any) {
-        console.error('❌ Auth hook initialization error:', error)
-        if (mounted.current) {
-          toast({
-            title: 'Initialization Error',
-            description: 'Failed to initialize authentication',
-            variant: 'destructive'
-          })
-        }
-      }
-    }
-
-    // Only initialize once on mount, not on every dependency change
-    const delayedInit = setTimeout(() => {
-      if (mounted.current) {
-        initializeAuth()
-      }
-    }, 100)
-    
+    let cancelled = false
+    console.log('ℹ️ Auth hook: Skipping local initialization; RouteGuardV2 manages it')
     return () => {
+      cancelled = true
       mounted.current = false
-      clearTimeout(delayedInit)
-      if (initTimeout) {
-        clearTimeout(initTimeout)
-      }
     }
-  }, []) // Remove dependencies to prevent re-initialization
+  }, [])
 
   // Sign in function
   const signIn = useCallback(async (email: string, password: string): Promise<AuthFlowResult> => {
