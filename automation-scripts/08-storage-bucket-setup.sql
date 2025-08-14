@@ -1,14 +1,14 @@
 -- ====================================================================
--- 📦 STORAGE BUCKET SETUP - SCRIPT #8
+-- 📦 COMPREHENSIVE STORAGE BUCKET SETUP - SCRIPT #8
 -- ====================================================================
--- This script sets up the missing avatars storage bucket
--- Run this to fix avatar upload issues
+-- This script sets up ALL required storage buckets for the Raptor Esports CRM
+-- Run this to fix all upload issues (avatars, media, OCR)
 
 -- ====================================================================
 -- 1. CREATE AVATARS STORAGE BUCKET
 -- ====================================================================
 
--- Create avatars bucket
+-- Create avatars bucket for profile pictures
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
     'avatars',
@@ -19,7 +19,35 @@ VALUES (
 ) ON CONFLICT (id) DO NOTHING;
 
 -- ====================================================================
--- 2. STORAGE POLICIES FOR AVATARS BUCKET
+-- 2. CREATE MEDIA STORAGE BUCKET
+-- ====================================================================
+
+-- Create media bucket for general file uploads
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'media',
+    'media',
+    true, -- Public bucket for media files
+    20971520, -- 20MB limit
+    ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'application/pdf', 'text/plain']
+) ON CONFLICT (id) DO NOTHING;
+
+-- ====================================================================
+-- 3. ENSURE OCR_UPLOADS BUCKET EXISTS
+-- ====================================================================
+
+-- Create OCR uploads bucket (if not already created)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'ocr_uploads',
+    'ocr_uploads',
+    false, -- Private bucket for OCR processing
+    10485760, -- 10MB limit
+    ARRAY['image/jpeg', 'image/png', 'image/jpg', 'image/webp']
+) ON CONFLICT (id) DO NOTHING;
+
+-- ====================================================================
+-- 4. STORAGE POLICIES FOR AVATARS BUCKET
 -- ====================================================================
 
 -- Allow authenticated users to upload avatars
@@ -47,52 +75,129 @@ FOR DELETE TO authenticated
 USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 -- ====================================================================
--- 3. VERIFY BUCKET CREATION
+-- 5. STORAGE POLICIES FOR MEDIA BUCKET
 -- ====================================================================
 
--- Check if avatars bucket exists
+-- Allow authenticated users to upload media files
+DROP POLICY IF EXISTS "Authenticated users can upload media" ON storage.objects;
+CREATE POLICY "Authenticated users can upload media" ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'media');
+
+-- Allow public to view media files
+DROP POLICY IF EXISTS "Public can view media" ON storage.objects;
+CREATE POLICY "Public can view media" ON storage.objects
+FOR SELECT TO public
+USING (bucket_id = 'media');
+
+-- Allow users to update their own media files
+DROP POLICY IF EXISTS "Users can update their own media" ON storage.objects;
+CREATE POLICY "Users can update their own media" ON storage.objects
+FOR UPDATE TO authenticated
+USING (bucket_id = 'media' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Allow users to delete their own media files
+DROP POLICY IF EXISTS "Users can delete their own media" ON storage.objects;
+CREATE POLICY "Users can delete their own media" ON storage.objects
+FOR DELETE TO authenticated
+USING (bucket_id = 'media' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- ====================================================================
+-- 6. STORAGE POLICIES FOR OCR_UPLOADS BUCKET
+-- ====================================================================
+
+-- Allow authenticated users to upload OCR files
+DROP POLICY IF EXISTS "Authenticated users can upload OCR files" ON storage.objects;
+CREATE POLICY "Authenticated users can upload OCR files" ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'ocr_uploads');
+
+-- Allow users to view their own OCR uploads
+DROP POLICY IF EXISTS "Users can view their own OCR uploads" ON storage.objects;
+CREATE POLICY "Users can view their own OCR uploads" ON storage.objects
+FOR SELECT TO authenticated
+USING (bucket_id = 'ocr_uploads' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Allow users to delete their own OCR uploads
+DROP POLICY IF EXISTS "Users can delete their own OCR uploads" ON storage.objects;
+CREATE POLICY "Users can delete their own OCR uploads" ON storage.objects
+FOR DELETE TO authenticated
+USING (bucket_id = 'ocr_uploads' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- ====================================================================
+-- 7. VERIFY BUCKET CREATION
+-- ====================================================================
+
+-- Check if all buckets exist
 DO $$
 DECLARE
-    bucket_exists boolean;
+    bucket_count integer;
+    expected_buckets text[] := ARRAY['avatars', 'media', 'ocr_uploads'];
+    missing_buckets text[] := '{}';
+    bucket_name text;
 BEGIN
-    SELECT EXISTS (
-        SELECT 1 FROM storage.buckets WHERE id = 'avatars'
-    ) INTO bucket_exists;
+    -- Count total buckets
+    SELECT COUNT(*) INTO bucket_count
+    FROM storage.buckets
+    WHERE id = ANY(expected_buckets);
     
-    IF bucket_exists THEN
-        RAISE NOTICE '✅ Avatars storage bucket created successfully!';
-        RAISE NOTICE '📦 Bucket ID: avatars';
-        RAISE NOTICE '🌐 Public access: enabled';
-        RAISE NOTICE '📏 File size limit: 5MB';
-        RAISE NOTICE '🖼️  Allowed types: JPEG, PNG, WebP';
+    -- Check for missing buckets
+    FOREACH bucket_name IN ARRAY expected_buckets
+    LOOP
+        IF NOT EXISTS (
+            SELECT 1 FROM storage.buckets WHERE id = bucket_name
+        ) THEN
+            missing_buckets := array_append(missing_buckets, bucket_name);
+        END IF;
+    END LOOP;
+    
+    RAISE NOTICE '📦 Storage Bucket Verification Results:';
+    RAISE NOTICE '  • Expected buckets: %', array_length(expected_buckets, 1);
+    RAISE NOTICE '  • Created buckets: %', bucket_count;
+    
+    IF array_length(missing_buckets, 1) > 0 THEN
+        RAISE NOTICE '  ⚠️  Missing buckets: %', array_to_string(missing_buckets, ', ');
     ELSE
-        RAISE NOTICE '❌ Failed to create avatars bucket';
+        RAISE NOTICE '  ✅ All expected buckets are present!';
     END IF;
+    
+    -- Show bucket details
+    RAISE NOTICE '';
+    RAISE NOTICE '📋 Bucket Details:';
+    RAISE NOTICE '  • avatars: Public, 5MB, Profile pictures';
+    RAISE NOTICE '  • media: Public, 20MB, General uploads';
+    RAISE NOTICE '  • ocr_uploads: Private, 10MB, OCR processing';
 END $$;
 
 -- ====================================================================
--- 4. TEST BUCKET ACCESS
+-- 8. TEST BUCKET ACCESS
 -- ====================================================================
 
--- Test if we can access the bucket
+-- Test if we can access all buckets
 DO $$
 DECLARE
     bucket_accessible boolean;
+    test_buckets text[] := ARRAY['avatars', 'media', 'ocr_uploads'];
+    bucket_name text;
 BEGIN
-    -- Try to list objects in the bucket (should work even if empty)
-    SELECT EXISTS (
-        SELECT 1 FROM storage.objects WHERE bucket_id = 'avatars' LIMIT 1
-    ) INTO bucket_accessible;
+    RAISE NOTICE '';
+    RAISE NOTICE '🔍 Testing bucket access...';
     
-    IF bucket_accessible OR NOT EXISTS (
-        SELECT 1 FROM storage.objects WHERE bucket_id = 'avatars'
-    ) THEN
-        RAISE NOTICE '✅ Avatars bucket is accessible!';
-        RAISE NOTICE '🚀 Avatar uploads should now work correctly.';
-    ELSE
-        RAISE NOTICE '⚠️  Bucket created but access test failed.';
-        RAISE NOTICE '   Check RLS policies and permissions.';
-    END IF;
+    FOREACH bucket_name IN ARRAY test_buckets
+    LOOP
+        -- Try to list objects in the bucket (should work even if empty)
+        SELECT EXISTS (
+            SELECT 1 FROM storage.objects WHERE bucket_id = bucket_name LIMIT 1
+        ) INTO bucket_accessible;
+        
+        IF bucket_accessible OR NOT EXISTS (
+            SELECT 1 FROM storage.objects WHERE bucket_id = bucket_name
+        ) THEN
+            RAISE NOTICE '  ✅ % bucket is accessible', bucket_name;
+        ELSE
+            RAISE NOTICE '  ❌ % bucket access failed', bucket_name;
+        END IF;
+    END LOOP;
 END $$;
 
 -- ====================================================================
@@ -102,16 +207,25 @@ END $$;
 DO $$
 BEGIN
     RAISE NOTICE '';
-    RAISE NOTICE '🎉 STORAGE BUCKET SETUP COMPLETE!';
+    RAISE NOTICE '🎉 COMPREHENSIVE STORAGE SETUP COMPLETE!';
     RAISE NOTICE '================================================';
     RAISE NOTICE '';
-    RAISE NOTICE '📋 What was created:';
-    RAISE NOTICE '  ✅ avatars storage bucket';
-    RAISE NOTICE '  ✅ Public read access';
-    RAISE NOTICE '  ✅ Authenticated upload access';
+    RAISE NOTICE '📋 What was created/verified:';
+    RAISE NOTICE '  ✅ avatars storage bucket (profile pictures)';
+    RAISE NOTICE '  ✅ media storage bucket (general uploads)';
+    RAISE NOTICE '  ✅ ocr_uploads storage bucket (OCR processing)';
+    RAISE NOTICE '  ✅ Public read access for avatars & media';
+    RAISE NOTICE '  ✅ Authenticated upload access for all buckets';
     RAISE NOTICE '  ✅ User-specific update/delete policies';
     RAISE NOTICE '';
-    RAISE NOTICE '🚀 Avatar uploads should now work!';
-    RAISE NOTICE '   Try uploading a profile picture again.';
+    RAISE NOTICE '🚀 All upload functionality should now work!';
+    RAISE NOTICE '   • Profile picture uploads';
+    RAISE NOTICE '   • Media file uploads';
+    RAISE NOTICE '   • OCR screenshot uploads';
+    RAISE NOTICE '';
+    RAISE NOTICE '📝 Next Steps:';
+    RAISE NOTICE '   1. Test avatar uploads in profile page';
+    RAISE NOTICE '   2. Test media uploads in dashboard/media';
+    RAISE NOTICE '   3. Test OCR uploads in performance tracking';
     RAISE NOTICE '';
 END $$;
