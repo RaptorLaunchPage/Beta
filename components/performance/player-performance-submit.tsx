@@ -132,20 +132,32 @@ export function PlayerPerformanceSubmit({ onPerformanceAdded }: { onPerformanceA
           <div className="text-sm text-muted-foreground">Team: <span className="font-semibold">{team ? team.name : "Loading..."}</span></div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="match_number">Match Number</Label>
-              <Input id="match_number" type="number" value={formData.match_number} onChange={e => setFormData({ ...formData, match_number: e.target.value })} required />
+              <Input 
+                id="match_number" 
+                type="number" 
+                value={formData.match_number} 
+                onChange={e => setFormData({ ...formData, match_number: e.target.value })} 
+                required 
+                className="min-h-[44px]"
+              />
             </div>
-            <SmartSlotSelector 
-              value={formData.slot} 
-              onValueChange={(val) => setFormData({ ...formData, slot: val })} 
-              required 
-            />
+            <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+              <Label htmlFor="slot">Slot</Label>
+              <SmartSlotSelector 
+                value={formData.slot} 
+                onValueChange={(val) => setFormData({ ...formData, slot: val })} 
+                required 
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="map">Map</Label>
               <Select value={formData.map} onValueChange={val => setFormData({ ...formData, map: val })} required>
-                <SelectTrigger><SelectValue placeholder="Select map" /></SelectTrigger>
+                <SelectTrigger className="min-h-[44px]">
+                  <SelectValue placeholder="Select map" />
+                </SelectTrigger>
                 <SelectContent>
                   {MAPS.map(map => <SelectItem key={map} value={map}>{map}</SelectItem>)}
                 </SelectContent>
@@ -153,23 +165,56 @@ export function PlayerPerformanceSubmit({ onPerformanceAdded }: { onPerformanceA
             </div>
             <div className="space-y-2">
               <Label htmlFor="placement">Placement</Label>
-              <Input id="placement" type="number" value={formData.placement} onChange={e => setFormData({ ...formData, placement: e.target.value })} />
+              <Input 
+                id="placement" 
+                type="number" 
+                value={formData.placement} 
+                onChange={e => setFormData({ ...formData, placement: e.target.value })} 
+                className="min-h-[44px]"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="kills">Kills</Label>
-              <Input id="kills" type="number" value={formData.kills} onChange={e => setFormData({ ...formData, kills: e.target.value })} required />
+              <Input 
+                id="kills" 
+                type="number" 
+                value={formData.kills} 
+                onChange={e => setFormData({ ...formData, kills: e.target.value })} 
+                required 
+                className="min-h-[44px]"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="assists">Assists</Label>
-              <Input id="assists" type="number" value={formData.assists} onChange={e => setFormData({ ...formData, assists: e.target.value })} />
+              <Input 
+                id="assists" 
+                type="number" 
+                value={formData.assists} 
+                onChange={e => setFormData({ ...formData, assists: e.target.value })} 
+                className="min-h-[44px]"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="damage">Damage</Label>
-              <Input id="damage" type="number" value={formData.damage} onChange={e => setFormData({ ...formData, damage: e.target.value })} required />
+              <Input 
+                id="damage" 
+                type="number" 
+                value={formData.damage} 
+                onChange={e => setFormData({ ...formData, damage: e.target.value })} 
+                required 
+                className="min-h-[44px]"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="survival_time">Survival Time (min)</Label>
-              <Input id="survival_time" type="number" value={formData.survival_time} onChange={e => setFormData({ ...formData, survival_time: e.target.value })} required />
+              <Input 
+                id="survival_time" 
+                type="number" 
+                value={formData.survival_time} 
+                onChange={e => setFormData({ ...formData, survival_time: e.target.value })} 
+                required 
+                className="min-h-[44px]"
+              />
             </div>
           </div>
           <Button type="submit" disabled={loading || slotsLoading}>{loading ? "Submitting..." : "Submit Performance"}</Button>

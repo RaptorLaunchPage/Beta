@@ -496,7 +496,7 @@ export function SmartSlotSelector({ value, onValueChange, required, teamId }: Sm
         }
       </div>
 
-      <div className="max-h-48 overflow-y-auto border rounded-md">
+              <div className="max-h-48 overflow-y-auto border rounded-md p-2">
         {filteredSlots.length > 0 ? (
           <div className="p-2 space-y-1">
             {filteredSlots.slice(0, 50).map(slot => (

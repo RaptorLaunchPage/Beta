@@ -243,13 +243,13 @@ export default function ContactPage() {
 
                     {/* General Inquiry */}
                     <div className={`transition-all duration-300 ${mode === "general" ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none absolute h-0 overflow-hidden"}`}>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
                           <label className="text-sm text-white/90">Name *</label>
                           <Input
                             value={general.name}
                             onChange={(e) => setGeneral((p) => ({ ...p, name: e.target.value }))}
-                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[44px]"
                             required={mode === "general"}
                           />
                         </div>
@@ -258,7 +258,7 @@ export default function ContactPage() {
                           <Input
                             value={general.subject}
                             onChange={(e) => setGeneral((p) => ({ ...p, subject: e.target.value }))}
-                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[44px]"
                             required={mode === "general"}
                           />
                         </div>
@@ -278,13 +278,13 @@ export default function ContactPage() {
 
                     {/* Brand / Collaboration */}
                     <div className={`transition-all duration-300 ${mode === "brand" ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none absolute h-0 overflow-hidden"}`}>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
                           <label className="text-sm text-white/90">Brand Name *</label>
                           <Input
                             value={brand.brandName}
                             onChange={(e) => setBrand((p) => ({ ...p, brandName: e.target.value }))}
-                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[44px]"
                             required={mode === "brand"}
                           />
                         </div>
@@ -293,26 +293,26 @@ export default function ContactPage() {
                           <Input
                             value={brand.contactName}
                             onChange={(e) => setBrand((p) => ({ ...p, contactName: e.target.value }))}
-                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[44px]"
                             required={mode === "brand"}
                           />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                      <div className="grid grid-cols-1 gap-4 mt-4">
                         <div className="space-y-2">
                           <label className="text-sm text-white/90">Brand Website (optional)</label>
                           <Input
                             value={brand.website}
                             onChange={(e) => setBrand((p) => ({ ...p, website: e.target.value }))}
-                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[44px]"
                             placeholder="https://example.com"
                           />
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm text-white/90">Type of Collaboration</label>
                           <Select value={brand.collabType} onValueChange={(v) => setBrand((p) => ({ ...p, collabType: v }))}>
-                            <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                            <SelectTrigger className="bg-white/10 border-white/20 text-white min-h-[44px]">
                               <SelectValue placeholder="Select type" />
                             </SelectTrigger>
                             <SelectContent>
