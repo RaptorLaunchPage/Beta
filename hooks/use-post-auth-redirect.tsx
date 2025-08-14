@@ -79,17 +79,11 @@ export function usePostAuthRedirect(options: UsePostAuthRedirectOptions = {}) {
 
     console.log(`⚡ Executing post-auth redirect to: ${targetPath} (delay: ${actualDelay}ms)`) 
 
-    // Perform redirect with delay
+    // Perform redirect with delay (minimize to reduce flicker)
     redirectTimeout.current = setTimeout(() => {
-      // Use router.replace to avoid back button issues
       router.replace(targetPath)
-      
-      // Also use safeRedirect as fallback
-      setTimeout(() => {
-        safeRedirect(targetPath, { delay: 50 })
-      }, 100)
-      
-    }, actualDelay)
+      safeRedirect(targetPath)
+    }, Math.min(actualDelay, 100))
 
     return () => {
       if (redirectTimeout.current) {

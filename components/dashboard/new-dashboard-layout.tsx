@@ -64,16 +64,7 @@ export function NewDashboardLayout({ children }: NewDashboardLayoutProps) {
       }, [isLoading, profile])
 
   if (isLoading) {
-    return (
-      <VideoBackground>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="flex flex-col items-center space-y-4 bg-black/70 backdrop-blur-lg border border-white/30 rounded-xl p-8 relative z-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-            <p className="text-white font-medium">Loading dashboard...</p>
-          </div>
-        </div>
-      </VideoBackground>
-    )
+    return null // Let GlobalLoading handle the loading UI to avoid flicker
   }
 
   if (!profile) {
