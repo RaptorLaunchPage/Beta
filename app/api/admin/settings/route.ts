@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     if ('error' in caller) return NextResponse.json({ error: caller.error }, { status: caller.status })
 
     const supabaseAdmin = getSupabaseAdmin()
-    const { data: settings, error: settingsError } = await supabaseAdmin
+    const { data: rows, error: settingsError } = await supabaseAdmin
       .from('admin_config')
       .select('key, value')
 
@@ -35,7 +35,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
     }
 
-    return NextResponse.json({ settings: settings || [] })
+    const settings: Record<string, string> = {}
+    for (const r of rows || []) settings[r.key] = r.value
+
+    return NextResponse.json({ settings })
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -44,7 +47,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const action = body.action as string
+    const action = body.action as string | undefined
     const caller = await getCaller(request)
     if ('error' in caller) return NextResponse.json({ error: caller.error }, { status: caller.status })
 
@@ -66,8 +69,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true })
     }
 
-    return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+    // Save admin settings into admin_config
+    const input = body.settings as Record<string, string | boolean> | undefined
+    if (!input) {
+      return NextResponse.json({ error: 'settings payload required' }, { status: 400 })
+    }
+
+    const entries = Object.entries(input).map(([key, value]) => ({ key, value: String(value) }))
+
+    const supabaseAdmin = getSupabaseAdmin()
+    const { error } = await supabaseAdmin
+      .from('admin_config')
+      .upsert(entries, { onConflict: 'key' })
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
-  }
+    return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 }) }
 }

@@ -7,7 +7,7 @@ import {
 } from '@/modules/discord-portal'
 import type { AutomationKey } from '@/modules/discord-portal'
 
-// Initialize Supabase client
+// Initialize Supabase client factory for user-bound operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -15,13 +15,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Missing Supabase environment variables during build')
 }
 
-const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null
+function getUserClient(request: NextRequest) {
+  if (!supabaseUrl || !supabaseAnonKey) return null
+  const authHeader = request.headers.get('authorization')
+  if (!authHeader) return null
+  const token = authHeader.replace('Bearer ', '')
+  return createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: `Bearer ${token}` } } })
+}
 
 // Helper function to get user from request
 async function getUserFromRequest(request: NextRequest) {
-  if (!supabase) {
+  const userClient = getUserClient(request)
+  if (!userClient) {
     return { error: 'Service unavailable', status: 503 }
   }
 
@@ -31,12 +36,12 @@ async function getUserFromRequest(request: NextRequest) {
   }
 
   const token = authHeader.replace('Bearer ', '')
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  const { data: { user }, error: authError } = await userClient.auth.getUser(token)
   if (authError || !user) {
     return { error: 'Invalid token', status: 401 }
   }
 
-  const { data: userData, error: userError } = await supabase
+  const { data: userData, error: userError } = await userClient
     .from('users')
     .select('id, role, team_id')
     .eq('id', user.id)
@@ -52,7 +57,8 @@ async function getUserFromRequest(request: NextRequest) {
 // GET - Fetch automation settings
 export async function GET(request: NextRequest) {
   try {
-    if (!supabase) {
+    const userClient = getUserClient(request)
+    if (!userClient) {
       return NextResponse.json(
         { error: 'Service unavailable' },
         { status: 503 }
@@ -111,7 +117,8 @@ export async function GET(request: NextRequest) {
 // PUT - Update automation setting
 export async function PUT(request: NextRequest) {
   try {
-    if (!supabase) {
+    const userClient = getUserClient(request)
+    if (!userClient) {
       return NextResponse.json(
         { error: 'Service unavailable' },
         { status: 503 }
