@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUser } from '@/lib/auth-utils'
-import { supabase } from '@/lib/supabase'
 import { CURRENT_AGREEMENT_VERSIONS, getRequiredAgreementVersion } from '@/lib/agreement-versions'
+import { createClient } from '@supabase/supabase-js'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
+
+function getUserClient(request: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const authHeader = request.headers.get('authorization') || ''
+  if (!supabaseUrl || !supabaseAnonKey || !authHeader.startsWith('Bearer ')) return null
+  const token = authHeader.substring(7)
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false }
+  })
+}
 
 // GET /api/agreements - Get user's agreement status
 export async function GET(request: NextRequest) {
@@ -14,8 +26,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user's role from users table
-    const { data: userData, error: userError } = await supabase
+    const userClient = getUserClient(request)
+    if (!userClient) return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+
+    // Get user's role from users table (RLS-aware)
+    const { data: userData, error: userError } = await userClient
       .from('users')
       .select('role')
       .eq('id', user.id)
@@ -29,7 +44,7 @@ export async function GET(request: NextRequest) {
     const requiredVersion = getRequiredAgreementVersion(userRole)
 
     // Check agreement status using database function
-    const { data: statusData, error: statusError } = await supabase
+    const { data: statusData, error: statusError } = await userClient
       .rpc('check_user_agreement_status', {
         p_user_id: user.id,
         p_role: userRole,
@@ -83,8 +98,11 @@ export async function POST(request: NextRequest) {
                'unknown'
     const userAgent = request.headers.get('user-agent') || 'unknown'
 
-    // Insert or update agreement
-    const { data: agreementData, error: agreementError } = await supabase
+    const userClient = getUserClient(request)
+    if (!userClient) return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+
+    // Insert or update agreement with RLS-respecting client
+    const { data: agreementData, error: agreementError } = await userClient
       .from('user_agreements')
       .upsert({
         user_id: user.id,

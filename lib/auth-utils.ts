@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export async function getUser(request: NextRequest) {
   try {
@@ -9,14 +9,25 @@ export async function getUser(request: NextRequest) {
     }
 
     const token = authHeader.substring(7)
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
 
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!url || !anon) {
+      return { user: null, profile: null }
+    }
+
+    const userClient = createClient(url, anon, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false }
+    })
+
+    const { data: { user }, error: authError } = await userClient.auth.getUser(token)
     if (authError || !user) {
       return { user: null, profile: null }
     }
 
-    // Get user profile
-    const { data: profile, error: profileError } = await supabase
+    // Get user profile using user-bound client (RLS-aware)
+    const { data: profile, error: profileError } = await userClient
       .from('users')
       .select('*')
       .eq('id', user.id)
