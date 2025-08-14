@@ -92,16 +92,16 @@ DECLARE
 BEGIN
     -- Count total triggers
     SELECT COUNT(*) INTO trigger_count
-    FROM information_schema.triggers
-    WHERE trigger_schema = 'public';
+    FROM information_schema.triggers t
+    WHERE t.trigger_schema = 'public';
     
     -- Check for missing triggers
     FOREACH trigger_name IN ARRAY expected_triggers
     LOOP
         IF NOT EXISTS (
-            SELECT 1 FROM information_schema.triggers
-            WHERE trigger_schema = 'public'
-            AND trigger_name = trigger_name
+            SELECT 1 FROM information_schema.triggers t
+            WHERE t.trigger_schema = 'public'
+            AND t.trigger_name = trigger_name
         ) THEN
             missing_triggers := array_append(missing_triggers, trigger_name);
         END IF;
