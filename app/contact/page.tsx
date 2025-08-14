@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react'
 import { VideoBackground } from '@/components/video-background'
-import { PublicNavigation } from '@/components/public-navigation'
-import { PublicFooter } from '@/components/public-footer'
-import { FadeInOnScroll } from '@/components/fade-in-on-scroll'
+import { PublicNavigation } from '@/components/public/PublicNavigation'
+import { PublicFooter } from '@/components/public/PublicFooter'
+import { FadeInOnScroll } from '@/components/ui/fade-in-on-scroll'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
