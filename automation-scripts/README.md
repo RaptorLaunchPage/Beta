@@ -1,208 +1,172 @@
-# 🚀 Raptor Esports CRM Automation Scripts
+# 🚀 Raptor Esports CRM - Automation Setup Scripts
 
-This directory contains all the automation scripts for the Raptor Esports CRM system. These scripts set up database functions, triggers, and scheduled jobs to automate various business processes.
+This directory contains all the SQL scripts needed to set up automation functions, triggers, and scheduled jobs for the Raptor Esports CRM system.
 
 ## 📋 Script Execution Order
 
-**IMPORTANT**: Run these scripts in the exact order shown below. Each script depends on functions created in previous scripts.
+**IMPORTANT**: Run these scripts in the exact order shown below in your Supabase SQL Editor:
 
-### 1. Core Automation Functions
-**File**: `01-core-automation-functions.sql`
-- **Purpose**: Creates foundational utility and validation functions
-- **Functions Created**: 7
-  - `update_updated_at_column()` - Auto-update timestamps
-  - `sync_user_profile_data()` - Sync user profiles
-  - `update_last_login()` - Track login times
-  - `validate_coach_assignment()` - Validate coach assignments
-  - `validate_performance_entry()` - Validate performance data
-  - `get_team_performance_summary()` - Team performance stats
-  - `get_player_stats()` - Player performance stats
+### 1. **01-core-automation-functions.sql**
+- Core utility functions for data management
+- User profile synchronization
+- Performance validation
+- Team statistics calculations
 
-### 2. Session & Attendance Automation
-**File**: `02-session-attendance-automation.sql`
-- **Purpose**: Creates session and attendance automation functions
-- **Functions Created**: 4
-  - `is_holiday()` - Check if date is a holiday
-  - `generate_daily_practice_sessions()` - Auto-generate practice sessions
-  - `auto_mark_absent_after_cutoff()` - Auto-mark absence after cutoff
-  - `create_auto_attendance_fixed()` - Create attendance from performances
+### 2. **02-session-attendance-automation.sql**
+- Holiday detection
+- Daily practice session generation
+- Automatic attendance marking
+- Attendance creation from performances
 
-### 3. Discord Portal Automation
-**File**: `03-discord-portal-automation.sql`
-- **Purpose**: Creates Discord webhook and notification automation
-- **Functions Created**: 6
-  - `get_team_webhook()` - Get team's Discord webhook
-  - `get_team_setting()` - Get team automation settings
-  - `log_discord_message()` - Log Discord message attempts
-  - `cleanup_old_discord_logs()` - Clean old Discord logs
-  - `trigger_slot_creation_notification()` - Notify on slot creation
-  - `trigger_roster_update_notification()` - Notify on roster updates
+### 3. **03-discord-portal-automation.sql**
+- Discord webhook management
+- Team setting retrieval
+- Message logging and cleanup
+- Notification triggers
 
-### 4. Business Logic Automation
-**File**: `04-business-logic-automation.sql`
-- **Purpose**: Creates business logic automation functions
-- **Functions Created**: 5
-  - `create_slot_expense()` - Auto-create slot expenses
-  - `sync_tryout_to_profile()` - Sync tryout data to profiles
-  - `can_view_profile()` - Profile visibility control
-  - `can_edit_profile()` - Profile edit permissions
-  - `check_user_agreement_status()` - Agreement enforcement
+### 4. **04-business-logic-automation.sql**
+- Slot expense creation
+- Tryout profile synchronization
+- Profile visibility controls
+- Agreement status checking
 
-### 5. Triggers Setup
-**File**: `05-triggers-setup.sql`
-- **Purpose**: Creates all triggers that use the automation functions
-- **Triggers Created**: 9
-  - `update_users_updated_at` - Auto-update timestamps
-  - `sync_user_profile_trigger` - Sync profile data
-  - `validate_coach_assignment_trigger` - Validate coaches
-  - `validate_performance_entry_trigger` - Validate performances
-  - `auto_attendance_on_performance` - Auto-create attendance
-  - `trigger_create_slot_expense` - Auto-create expenses
-  - `trigger_sync_tryout_to_profile` - Sync tryout data
-  - `trigger_slot_creation_notification` - Discord slot notifications
-  - `trigger_roster_update_notification` - Discord roster notifications
+### 5. **05-triggers-setup.sql**
+- Database triggers for all automation functions
+- Real-time data synchronization
+- Validation triggers
+- Notification triggers
 
-### 6. Scheduled Jobs Setup
-**File**: `06-scheduled-jobs-setup.sql`
-- **Purpose**: Sets up automated scheduled jobs using pg_cron
-- **Jobs Created**: 6
-  - `generate-daily-practice-sessions` - Daily at 6:00 AM
-  - `auto-mark-absence-after-cutoff` - Every 30 minutes
-  - `cleanup-old-discord-logs` - Sundays at 2:00 AM
-  - `cleanup-attendance-debug-logs` - Sundays at 2:30 AM
-  - `monthly-data-cleanup` - 1st of month at 3:00 AM
-  - `hourly-health-check` - Every hour
+### 6. **06-scheduled-jobs-setup.sql**
+- Daily practice session generation
+- Automatic absence marking
+- Log cleanup jobs
+- Monthly data maintenance
 
-### 7. Verification & Testing
-**File**: `07-verification-testing.sql`
-- **Purpose**: Verifies all automation functions and provides summary
-- **What it does**:
-  - Checks all functions exist
-  - Verifies all triggers are created
-  - Confirms scheduled jobs are set up
-  - Tests basic functionality
-  - Provides comprehensive summary
+### 7. **07-verification-testing.sql**
+- Verify all functions exist
+- Check triggers are working
+- Test scheduled jobs
+- Basic functionality tests
 
-## 🛠️ How to Execute
+### 8. **08-storage-bucket-setup.sql** ⭐ **NEW**
+- Create avatars storage bucket
+- Set up storage policies
+- Fix avatar upload issues
+- Enable public image access
 
-### In Supabase SQL Editor:
+## 🎯 What Each Script Does
+
+### Core Functions (Script 1)
+- **`update_updated_at_column`**: Automatically updates timestamps
+- **`sync_user_profile_data`**: Syncs user data across tables
+- **`update_last_login`**: Tracks user login activity
+- **`validate_coach_assignment`**: Ensures valid coach-team assignments
+- **`validate_performance_entry`**: Validates performance data
+- **`get_team_performance_summary`**: Calculates team statistics
+- **`get_player_stats`**: Generates player performance metrics
+
+### Session Management (Script 2)
+- **`is_holiday`**: Detects holidays for session scheduling
+- **`generate_daily_practice_sessions`**: Creates daily practice slots
+- **`auto_mark_absent_after_cutoff`**: Marks late arrivals as absent
+- **`create_auto_attendance_fixed`**: Creates attendance from performances
+
+### Discord Integration (Script 3)
+- **`get_team_webhook`**: Retrieves team Discord webhooks
+- **`get_team_setting`**: Gets team automation settings
+- **`log_discord_message`**: Logs Discord notifications
+- **`cleanup_old_discord_logs`**: Removes old log entries
+- **`trigger_slot_creation_notification`**: Notifies Discord of new slots
+- **`trigger_roster_update_notification`**: Notifies of roster changes
+
+### Business Logic (Script 4)
+- **`create_slot_expense`**: Automatically creates expenses for slots
+- **`sync_tryout_to_profile`**: Syncs tryout data to user profiles
+- **`can_view_profile`**: Controls profile visibility
+- **`can_edit_profile`**: Controls profile editing permissions
+- **`check_user_agreement_status`**: Checks agreement compliance
+
+### Storage Setup (Script 8) ⭐ **NEW**
+- **`avatars` bucket**: Stores profile pictures
+- **Public access**: Allows viewing avatar images
+- **Upload policies**: Controls who can upload avatars
+- **User permissions**: Users can manage their own avatars
+
+## 🔧 How to Run
 
 1. **Open Supabase Dashboard**
    - Go to your project dashboard
    - Navigate to SQL Editor
 
 2. **Execute Scripts in Order**
-   - Copy and paste each script content
-   - Run them in the exact order shown above
-   - Wait for each script to complete before running the next
+   - Copy each script content
+   - Paste into SQL Editor
+   - Click "Run" button
+   - Wait for completion before running next script
 
-3. **Monitor Output**
-   - Each script will show success messages
-   - The final verification script will confirm everything is working
+3. **Verify Setup**
+   - Run the verification script last
+   - Check console output for success messages
+   - Test avatar uploads in the application
 
-### Example Execution:
+## 🚨 Important Notes
 
-```sql
--- Run Script 1
--- Copy content from 01-core-automation-functions.sql
--- Execute and wait for success message
+### Environment Variables Required
+Make sure these are set in your Supabase project:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
--- Run Script 2  
--- Copy content from 02-session-attendance-automation.sql
--- Execute and wait for success message
+### pg_cron Extension
+The scheduled jobs require the `pg_cron` extension. If it's not available:
+- Contact Supabase support to enable it
+- Or manually run the functions via cron jobs
 
--- Continue with remaining scripts...
-```
+### Storage Bucket
+The avatar upload functionality requires the `avatars` storage bucket:
+- Script 8 creates this automatically
+- If you get "failed to upload" errors, run script 8 first
 
-## 🔧 Automation Features
+## 🐛 Troubleshooting
 
-Once all scripts are executed, your system will have:
+### Avatar Upload Issues
+If you get "failed to upload" errors:
+1. Run script 8 to create the storage bucket
+2. Check browser console for detailed error messages
+3. Verify environment variables are set correctly
+4. Check Supabase logs for storage errors
 
-### ✅ User Management Automation
-- Automatic profile synchronization
-- Login time tracking
-- Profile visibility controls
-- Agreement enforcement
+### Function Not Found Errors
+If functions are missing:
+1. Ensure scripts were run in correct order
+2. Check for SQL syntax errors in previous runs
+3. Re-run the specific script that failed
 
-### ✅ Session & Attendance Automation
-- Daily practice session generation
-- Automatic attendance creation from performances
-- Auto-mark absence after cutoff time
-- Holiday-aware scheduling
-
-### ✅ Discord Integration
-- Automatic webhook notifications
-- Message logging and retry
-- Team-specific automation settings
-- Log cleanup and maintenance
-
-### ✅ Business Logic Automation
-- Automatic slot expense creation
-- Tryout data synchronization
-- Data validation and integrity checks
-- Performance statistics calculation
-
-### ✅ Scheduled Maintenance
-- Daily session generation
-- Regular absence marking
-- Weekly log cleanup
-- Monthly data maintenance
-- Hourly health checks
-
-## ⚠️ Important Notes
-
-### Prerequisites
-- Supabase project with all tables created (from migration #19)
-- pg_cron extension enabled (usually available by default)
-- Proper RLS policies in place
-
-### Dependencies
-- Each script depends on the previous ones
-- Don't skip scripts or change the order
-- Ensure each script completes successfully before running the next
-
-### Monitoring
-- Check the verification script output
-- Monitor scheduled job execution in Supabase dashboard
-- Review automation logs for any issues
-
-### Troubleshooting
-- If a script fails, check the error message
-- Ensure all required tables exist
-- Verify RLS policies are properly configured
-- Check that pg_cron extension is enabled
+### Permission Errors
+If you get permission denied errors:
+1. Verify RLS policies are set up correctly
+2. Check user roles and permissions
+3. Ensure service role key has proper access
 
 ## 📊 Expected Results
 
-After running all scripts, you should see:
+After running all scripts, you should have:
+- ✅ 22 automation functions
+- ✅ 9 database triggers
+- ✅ 6 scheduled jobs
+- ✅ 1 storage bucket with policies
+- ✅ Avatar upload functionality working
+- ✅ All automation features active
 
-- **22 automation functions** created
-- **9 triggers** active
-- **6 scheduled jobs** running
-- **Comprehensive verification** showing all systems operational
+## 🎉 Success Indicators
 
-## 🚀 Next Steps
-
-After automation setup:
-
-1. **Test Agreement Flow**
-   - Try accepting agreements as different user roles
-   - Verify enforcement settings work
-
-2. **Test Discord Integration**
-   - Create a slot and verify Discord notification
-   - Check webhook settings and logs
-
-3. **Monitor Automation**
-   - Watch scheduled jobs execute
-   - Review attendance automation
-   - Check session generation
-
-4. **Configure Settings**
-   - Set up Discord webhooks
-   - Configure team automation preferences
-   - Adjust agreement enforcement settings
+- Avatar uploads work without errors
+- Daily practice sessions are generated automatically
+- Discord notifications are sent for events
+- Attendance is marked automatically
+- Profile data stays synchronized
+- Agreement enforcement works correctly
 
 ---
 
-**Need Help?** Check the verification script output for any missing components or errors.
+**Need Help?** Check the verification script output for detailed status information about each component.
