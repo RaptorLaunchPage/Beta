@@ -65,6 +65,12 @@ export function usePostAuthRedirect(options: UsePostAuthRedirectOptions = {}) {
       return
     }
 
+    // Prevent redirect wars: only run redirect from explicit auth pages or when forced
+    const isAuthPage = ['/','/auth/login','/auth/signup','/auth/confirm'].includes(pathname)
+    if (!forceRedirect && !isAuthPage) {
+      return
+    }
+
     // Mark as redirected to prevent multiple redirects
     hasRedirected.current = true
 

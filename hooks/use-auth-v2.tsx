@@ -81,17 +81,8 @@ const AuthProviderV2 = memo(function AuthProviderV2({ children }: { children: Re
           
           // UNIFIED REDIRECT LOGIC: Both email and Discord use the same flow
           if (result.success) {
-            console.log(`🔄 ${provider} authentication complete, triggering unified redirect`)
-            
-            // Set pending redirect for immediate handling when profile loads
-            pendingRedirect.current = {
-              redirectPath: result.redirectPath || '/dashboard',
-              isFromAuthPage: true,
-              isRequiredRedirect: true
-            }
-            
-            // The redirect will be handled by the state change handler when profile is ready
-            console.log('⏳ Redirect queued, waiting for profile to load...')
+            console.log(`🔄 ${provider} authentication complete`)
+            // Do not set a pending redirect here; post-auth hook handles it to avoid double routing
           }
         }
       } catch (error: any) {
@@ -164,41 +155,7 @@ const AuthProviderV2 = memo(function AuthProviderV2({ children }: { children: Re
     return unsubscribe
   }, [safeRedirect])
 
-  // Handle instant redirect when authentication is complete
-  useEffect(() => {
-    if (!mounted.current) return
-
-    // Check if we should trigger an instant redirect after authentication completes
-    if (authState.isAuthenticated && !authState.isLoading && authState.profile && pendingRedirect.current) {
-      const { redirectPath, isFromAuthPage, isRequiredRedirect } = pendingRedirect.current
-      const currentPath = window.location.pathname
-
-      console.log('🚀 Authentication complete! Profile ready, triggering instant redirect to:', redirectPath)
-      
-      // Clear any existing redirect timeout
-      if (redirectTimeout.current) {
-        clearTimeout(redirectTimeout.current)
-        redirectTimeout.current = null
-      }
-
-      // Don't redirect if already on the target page
-      if (currentPath !== redirectPath) {
-        console.log('⚡ Instant redirect to:', redirectPath)
-        
-        // Small delay to coordinate with login animation
-        setTimeout(() => {
-          if (mounted.current) {
-            safeRedirect(redirectPath)
-          }
-        }, 1600) // Slightly after login animation completes
-      } else {
-        console.log('🔄 Already on target page, skipping redirect')
-      }
-
-      // Clear the pending redirect
-      pendingRedirect.current = null
-    }
-  }, [authState.isAuthenticated, authState.isLoading, authState.profile, router])
+  // Remove instant redirect block; usePostAuthRedirect centrally manages redirects to avoid flicker
 
   // Initialize auth flow on mount is fully handled by RouteGuardV2 to avoid double init flicker
   useEffect(() => {
