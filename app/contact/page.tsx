@@ -1,61 +1,127 @@
 "use client"
 
-import React, { useMemo, useState } from "react"
-import Link from "next/link"
-import { VideoBackground } from "@/components/video-background"
-import { PublicNavigation } from "@/components/public/PublicNavigation"
-import { PublicFooter } from "@/components/public/PublicFooter"
-import { FadeInOnScroll } from "@/components/ui/fade-in-on-scroll"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import { getButtonStyle } from "@/lib/global-theme"
-import { useToast } from "@/hooks/use-toast"
-import { Upload, CheckCircle2 } from "lucide-react"
-// Public submission endpoint, no auth required
+import React, { useState } from 'react'
+import { VideoBackground } from '@/components/video-background'
+import { PublicNavigation } from '@/components/public/PublicNavigation'
+import { PublicFooter } from '@/components/public/PublicFooter'
+import { FadeInOnScroll } from '@/components/ui/fade-in-on-scroll'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useToast } from '@/hooks/use-toast'
+import { CheckCircle2, Upload, Loader2, X } from "lucide-react"
+
+const collabTypes = [
+  { value: 'sponsorship', label: 'Sponsorship' },
+  { value: 'partnership', label: 'Partnership' },
+  { value: 'collaboration', label: 'Collaboration' },
+  { value: 'endorsement', label: 'Endorsement' },
+  { value: 'other', label: 'Other' }
+]
 
 export default function ContactPage() {
   const { toast } = useToast()
-
-  const [mode, setMode] = useState<"general" | "brand">("general")
+  const [mode, setMode] = useState<'general' | 'brand'>('general')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [selectedWebhookId] = useState<string | undefined>(undefined)
+  const [uploading, setUploading] = useState(false)
+  const [uploadedFile, setUploadedFile] = useState<{
+    url: string
+    name: string
+    size: number
+  } | null>(null)
 
-  // General inquiry state
   const [general, setGeneral] = useState({
-    name: "",
-    subject: "",
-    message: "",
+    name: '',
+    subject: '',
+    message: ''
   })
 
-  // Brand / Collaboration state
   const [brand, setBrand] = useState({
-    brandName: "",
-    contactName: "",
-    website: "",
-    collabType: "",
-    details: "",
-    file: null as File | null,
+    brandName: '',
+    contactName: '',
+    website: '',
+    collabType: '',
+    details: '',
+    file: null as File | null
   })
 
-  const collabTypes = [
-    { value: "sponsorship", label: "Sponsorship" },
-    { value: "tournament", label: "Tournament Partnership" },
-    { value: "content", label: "Content Creation" },
-    { value: "other", label: "Other" },
-  ]
+  const handleFileUpload = async (file: File) => {
+    if (!file) return
 
-  // No webhook selection; handled by public API + env vars
+    // Validate file type
+    const allowed = ["application/pdf", "image/png", "image/jpeg", "image/webp"]
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Invalid file", description: "Upload a PDF or image (PNG/JPG/WEBP).", variant: "destructive" })
+      return
+    }
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max size is 10MB.", variant: "destructive" })
+      return
+    }
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/public/upload/contact-file', {
+        method: 'POST',
+        body: formData
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Upload failed')
+      }
+
+      setUploadedFile({
+        url: data.downloadUrl,
+        name: data.fileName,
+        size: data.fileSize
+      })
+
+      toast({
+        title: "File uploaded",
+        description: `${file.name} uploaded successfully`,
+        variant: "default"
+      })
+
+    } catch (error: any) {
+      console.error('File upload error:', error)
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload file",
+        variant: "destructive"
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setBrand(prev => ({ ...prev, file }))
+      handleFileUpload(file)
+    }
+  }
+
+  const removeFile = () => {
+    setUploadedFile(null)
+    setBrand(prev => ({ ...prev, file: null }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Basic validation
     if (mode === "general") {
-      if (!general.name || !general.message) {
+      if (!general.name || !general.subject || !general.message) {
         toast({ title: "Validation error", description: "Please fill the required fields.", variant: "destructive" })
         return
       }
@@ -67,17 +133,6 @@ export default function ContactPage() {
       if (brand.website && !/^https?:\/\//i.test(brand.website)) {
         toast({ title: "Invalid URL", description: "Please provide a valid website URL (https://...)", variant: "destructive" })
         return
-      }
-      if (brand.file) {
-        const allowed = ["application/pdf", "image/png", "image/jpeg", "image/webp"]
-        if (!allowed.includes(brand.file.type)) {
-          toast({ title: "Invalid file", description: "Upload a PDF or image (PNG/JPG/WEBP).", variant: "destructive" })
-          return
-        }
-        if (brand.file.size > 10 * 1024 * 1024) {
-          toast({ title: "File too large", description: "Max size is 10MB.", variant: "destructive" })
-          return
-        }
       }
     }
 
@@ -95,18 +150,26 @@ export default function ContactPage() {
         website: brand.website,
         collabType: brand.collabType,
         message: brand.details,
+        // Include file info if uploaded
+        ...(uploadedFile && {
+          fileUrl: uploadedFile.url,
+          fileName: uploadedFile.name
+        })
       }
+      
       const res = await fetch('/api/public/submit/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
+      
       if (!res.ok) {
         const e = await res.json().catch(() => ({}))
         throw new Error(e.error || 'Failed to submit')
       }
+      
       setSubmitted(true)
-    } catch (err:any) {
+    } catch (err: any) {
       toast({ title: 'Submission failed', description: err.message || 'Please try again later', variant: 'destructive' })
     } finally {
       setSubmitting(false)
@@ -134,7 +197,7 @@ export default function ContactPage() {
               <h1 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-xl">Contact Raptor Esports</h1>
             </FadeInOnScroll>
             <FadeInOnScroll delayMs={120}>
-              <p className="mt-3 max-w-2xl text-white/85">Whether you’re a fan, player, or brand — let’s connect.</p>
+              <p className="mt-3 max-w-2xl text-white/85">Whether you're a fan, player, or brand — let's connect.</p>
             </FadeInOnScroll>
           </div>
         </section>
@@ -146,7 +209,7 @@ export default function ContactPage() {
                 <CardContent className="p-8 text-center">
                   <CheckCircle2 className="h-10 w-10 text-green-400 mx-auto mb-3" />
                   <div className="text-2xl font-semibold">Thank you for reaching out!</div>
-                  <p className="text-white/80 mt-2">We’ll get back to you soon.</p>
+                  <p className="text-white/80 mt-2">We'll get back to you soon.</p>
                 </CardContent>
               </Card>
             </FadeInOnScroll>
@@ -158,45 +221,49 @@ export default function ContactPage() {
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm text-white/90">Topic *</label>
-                        <Select value={mode} onValueChange={(v: any) => setMode(v)}>
-                          <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                            <SelectValue placeholder="Select topic" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="general">General Inquiry</SelectItem>
-                            <SelectItem value="brand">Brand / Collaboration Inquiry</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {/* Webhook selection removed from public UI; uses admin-configured webhook automatically */}
+                    {/* Mode Toggle */}
+                    <div className="flex gap-2 p-1 bg-white/10 rounded-lg">
+                      <Button
+                        type="button"
+                        variant={mode === "general" ? "default" : "ghost"}
+                        onClick={() => setMode("general")}
+                        className="flex-1"
+                      >
+                        General Inquiry
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={mode === "brand" ? "default" : "ghost"}
+                        onClick={() => setMode("brand")}
+                        className="flex-1"
+                      >
+                        Brand / Collaboration
+                      </Button>
                     </div>
 
                     {/* General Inquiry */}
                     <div className={`transition-all duration-300 ${mode === "general" ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none absolute h-0 overflow-hidden"}`}>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-sm text-white/90">Full Name *</label>
+                          <label className="text-sm text-white/90">Name *</label>
                           <Input
                             value={general.name}
                             onChange={(e) => setGeneral((p) => ({ ...p, name: e.target.value }))}
                             className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                            placeholder="Your name"
                             required={mode === "general"}
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm text-white/90">Subject</label>
+                          <label className="text-sm text-white/90">Subject *</label>
                           <Input
                             value={general.subject}
                             onChange={(e) => setGeneral((p) => ({ ...p, subject: e.target.value }))}
                             className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                            placeholder="Short subject"
+                            required={mode === "general"}
                           />
                         </div>
                       </div>
+
                       <div className="space-y-2 mt-4">
                         <label className="text-sm text-white/90">Message *</label>
                         <Textarea
@@ -268,22 +335,54 @@ export default function ContactPage() {
                         />
                       </div>
 
-                      <div className="space-y-2 mt-2">
+                      <div className="space-y-2 mt-4">
                         <label className="text-sm text-white/90">Media Deck (PDF or image, max 10MB)</label>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="file"
-                            accept=".pdf,image/*"
-                            onChange={(e) => setBrand((p) => ({ ...p, file: e.target.files?.[0] || null }))}
-                            className="text-white/80"
-                          />
-                          <Upload className="h-4 w-4 text-white/70" />
+                        
+                        {/* File Upload Area */}
+                        <div className="space-y-3">
+                          {!uploadedFile ? (
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="file"
+                                accept=".pdf,image/*"
+                                onChange={handleFileChange}
+                                className="text-white/80"
+                                disabled={uploading}
+                              />
+                              {uploading ? (
+                                <Loader2 className="h-4 w-4 text-white/70 animate-spin" />
+                              ) : (
+                                <Upload className="h-4 w-4 text-white/70" />
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between p-3 bg-white/10 rounded-lg border border-white/20">
+                              <div className="flex items-center gap-3">
+                                <Upload className="h-4 w-4 text-white/70" />
+                                <div>
+                                  <p className="text-sm text-white/90">{uploadedFile.name}</p>
+                                  <p className="text-xs text-white/60">
+                                    {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                                  </p>
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={removeFile}
+                                className="text-white/70 hover:text-white"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
 
                     <div className="pt-2">
-                      <Button disabled={submitting} type="submit" className="px-5 py-2 font-semibold">
+                      <Button disabled={submitting || uploading} type="submit" className="px-5 py-2 font-semibold">
                         {submitting ? "Submitting..." : "Submit"}
                       </Button>
                     </div>

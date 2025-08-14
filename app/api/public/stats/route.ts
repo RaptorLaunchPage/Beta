@@ -13,10 +13,15 @@ export async function GET() {
     const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
     const [teamsCountRes, playersCountRes, matchesCountRes, winsCountRes, expensesSumRes] = await Promise.all([
+      // Count active teams (status = 'active')
       supabase.from('teams').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      // Count active players (role = 'player' AND status = 'Active')
       supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'player').eq('status', 'Active'),
+      // Count total performances (matches)
       supabase.from('performances').select('*', { count: 'exact', head: true }),
+      // Count wins (placement = 1)
       supabase.from('performances').select('*', { count: 'exact', head: true }).eq('placement', 1),
+      // Sum all slot expenses
       supabase.from('slot_expenses').select('total')
     ])
 
@@ -47,6 +52,7 @@ export async function GET() {
       }
     })
   } catch (error: any) {
+    console.error('Stats API error:', error)
     return NextResponse.json({ error: error.message || 'Failed to load stats' }, { status: 500 })
   }
 }
