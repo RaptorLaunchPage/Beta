@@ -13,6 +13,15 @@ function buildContactEmbed(payload: any) {
   if (payload.contactName) fields.push({ name: 'Contact', value: payload.contactName, inline: true })
   if (payload.website) fields.push({ name: 'Website', value: payload.website, inline: true })
   if (payload.collabType) fields.push({ name: 'Collab Type', value: payload.collabType, inline: true })
+  
+  // Add file attachment info if present
+  if (payload.fileUrl) {
+    fields.push({ 
+      name: '📎 Attachment', 
+      value: `[Download ${payload.fileName || 'File'}](${payload.fileUrl})`, 
+      inline: false 
+    })
+  }
 
   return {
     username: 'Raptor Esports Submissions',

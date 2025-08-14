@@ -2,7 +2,7 @@
 -- 📦 COMPREHENSIVE STORAGE BUCKET SETUP - SCRIPT #8
 -- ====================================================================
 -- This script sets up ALL required storage buckets for the Raptor Esports CRM
--- Run this to fix all upload issues (avatars, media, OCR)
+-- Run this to fix all upload issues (avatars, media, OCR, contact files)
 
 -- ====================================================================
 -- 1. CREATE AVATARS STORAGE BUCKET
@@ -33,7 +33,21 @@ VALUES (
 ) ON CONFLICT (id) DO NOTHING;
 
 -- ====================================================================
--- 3. ENSURE OCR_UPLOADS BUCKET EXISTS
+-- 3. CREATE CONTACT_FILES STORAGE BUCKET
+-- ====================================================================
+
+-- Create contact_files bucket for contact form attachments
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'contact_files',
+    'contact_files',
+    false, -- Private bucket for contact form files
+    10485760, -- 10MB limit
+    ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf']
+) ON CONFLICT (id) DO NOTHING;
+
+-- ====================================================================
+-- 4. ENSURE OCR_UPLOADS BUCKET EXISTS
 -- ====================================================================
 
 -- Create OCR uploads bucket (if not already created)
@@ -47,7 +61,7 @@ VALUES (
 ) ON CONFLICT (id) DO NOTHING;
 
 -- ====================================================================
--- 4. STORAGE POLICIES FOR AVATARS BUCKET
+-- 5. STORAGE POLICIES FOR AVATARS BUCKET
 -- ====================================================================
 
 -- Allow authenticated users to upload avatars
@@ -75,7 +89,7 @@ FOR DELETE TO authenticated
 USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 -- ====================================================================
--- 5. STORAGE POLICIES FOR MEDIA BUCKET
+-- 6. STORAGE POLICIES FOR MEDIA BUCKET
 -- ====================================================================
 
 -- Allow authenticated users to upload media files
@@ -103,7 +117,29 @@ FOR DELETE TO authenticated
 USING (bucket_id = 'media' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 -- ====================================================================
--- 6. STORAGE POLICIES FOR OCR_UPLOADS BUCKET
+-- 7. STORAGE POLICIES FOR CONTACT_FILES BUCKET
+-- ====================================================================
+
+-- Allow public to upload contact files (no auth required for contact form)
+DROP POLICY IF EXISTS "Public can upload contact files" ON storage.objects;
+CREATE POLICY "Public can upload contact files" ON storage.objects
+FOR INSERT TO public
+WITH CHECK (bucket_id = 'contact_files');
+
+-- Allow public to view contact files (for download links)
+DROP POLICY IF EXISTS "Public can view contact files" ON storage.objects;
+CREATE POLICY "Public can view contact files" ON storage.objects
+FOR SELECT TO public
+USING (bucket_id = 'contact_files');
+
+-- Allow public to delete contact files (for cleanup)
+DROP POLICY IF EXISTS "Public can delete contact files" ON storage.objects;
+CREATE POLICY "Public can delete contact files" ON storage.objects
+FOR DELETE TO public
+USING (bucket_id = 'contact_files');
+
+-- ====================================================================
+-- 8. STORAGE POLICIES FOR OCR_UPLOADS BUCKET
 -- ====================================================================
 
 -- Allow authenticated users to upload OCR files
@@ -125,14 +161,14 @@ FOR DELETE TO authenticated
 USING (bucket_id = 'ocr_uploads' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 -- ====================================================================
--- 7. VERIFY BUCKET CREATION
+-- 9. VERIFY BUCKET CREATION
 -- ====================================================================
 
 -- Check if all buckets exist
 DO $$
 DECLARE
     bucket_count integer;
-    expected_buckets text[] := ARRAY['avatars', 'media', 'ocr_uploads'];
+    expected_buckets text[] := ARRAY['avatars', 'media', 'contact_files', 'ocr_uploads'];
     missing_buckets text[] := '{}';
     bucket_name text;
 BEGIN
@@ -166,18 +202,19 @@ BEGIN
     RAISE NOTICE '📋 Bucket Details:';
     RAISE NOTICE '  • avatars: Public, 5MB, Profile pictures';
     RAISE NOTICE '  • media: Public, 20MB, General uploads';
+    RAISE NOTICE '  • contact_files: Public, 10MB, Contact form attachments';
     RAISE NOTICE '  • ocr_uploads: Private, 10MB, OCR processing';
 END $$;
 
 -- ====================================================================
--- 8. TEST BUCKET ACCESS
+-- 10. TEST BUCKET ACCESS
 -- ====================================================================
 
 -- Test if we can access all buckets
 DO $$
 DECLARE
     bucket_accessible boolean;
-    test_buckets text[] := ARRAY['avatars', 'media', 'ocr_uploads'];
+    test_buckets text[] := ARRAY['avatars', 'media', 'contact_files', 'ocr_uploads'];
     bucket_name text;
 BEGIN
     RAISE NOTICE '';
@@ -213,19 +250,23 @@ BEGIN
     RAISE NOTICE '📋 What was created/verified:';
     RAISE NOTICE '  ✅ avatars storage bucket (profile pictures)';
     RAISE NOTICE '  ✅ media storage bucket (general uploads)';
+    RAISE NOTICE '  ✅ contact_files storage bucket (contact form attachments)';
     RAISE NOTICE '  ✅ ocr_uploads storage bucket (OCR processing)';
     RAISE NOTICE '  ✅ Public read access for avatars & media';
-    RAISE NOTICE '  ✅ Authenticated upload access for all buckets';
+    RAISE NOTICE '  ✅ Public upload access for contact files';
+    RAISE NOTICE '  ✅ Authenticated upload access for other buckets';
     RAISE NOTICE '  ✅ User-specific update/delete policies';
     RAISE NOTICE '';
     RAISE NOTICE '🚀 All upload functionality should now work!';
     RAISE NOTICE '   • Profile picture uploads';
     RAISE NOTICE '   • Media file uploads';
+    RAISE NOTICE '   • Contact form file attachments';
     RAISE NOTICE '   • OCR screenshot uploads';
     RAISE NOTICE '';
     RAISE NOTICE '📝 Next Steps:';
     RAISE NOTICE '   1. Test avatar uploads in profile page';
     RAISE NOTICE '   2. Test media uploads in dashboard/media';
-    RAISE NOTICE '   3. Test OCR uploads in performance tracking';
+    RAISE NOTICE '   3. Test contact form file uploads';
+    RAISE NOTICE '   4. Test OCR uploads in performance tracking';
     RAISE NOTICE '';
 END $$;
