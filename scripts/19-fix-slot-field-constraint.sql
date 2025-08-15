@@ -80,6 +80,10 @@ END $$;
 -- 4. UPDATE THE PERFORMANCE VALIDATION FUNCTION
 -- ====================================================================
 
+-- Drop existing triggers first
+DROP TRIGGER IF EXISTS validate_performance_entry_trigger ON public.performances;
+DROP TRIGGER IF EXISTS validate_performance_trigger ON public.performances;
+
 -- Drop the existing function if it exists
 DROP FUNCTION IF EXISTS public.validate_performance_entry();
 
@@ -144,6 +148,10 @@ CREATE TRIGGER validate_performance_trigger
 -- ====================================================================
 -- 6. UPDATE THE ATTENDANCE CREATION FUNCTION
 -- ====================================================================
+
+-- Drop existing triggers first
+DROP TRIGGER IF EXISTS create_attendance_from_performance_trigger ON public.performances;
+DROP TRIGGER IF EXISTS create_match_attendance_from_performance_trigger ON public.performances;
 
 -- Drop the existing function if it exists
 DROP FUNCTION IF EXISTS public.create_match_attendance_from_performance();
