@@ -185,24 +185,25 @@ export async function POST(request: NextRequest) {
       team_id,
       slot_id,
       
-      // Legacy format fields (for backward compatibility)
-      match_number,
-      slot,
-      player_id,
-      added_by
-    } = body
+                  // Legacy format fields (for backward compatibility)
+            match_number,
+            slot,
+            player_id,
+            added_by
+          } = body
 
-    // Map legacy fields to new format
-    const finalMatchType = match_type || 'practice' // Default to practice if not specified
-    const finalMap = map
-    const finalKills = kills || 0
-    const finalAssists = assists || 0
-    const finalDamage = damage || 0
-    const finalSurvivalTime = survival_time || 0
-    const finalPlacement = placement
-    const finalTeamId = team_id || user.team_id
-    const finalSlotId = slot_id || slot // Use slot_id if provided, otherwise use legacy slot
-    const finalPlayerId = player_id || user.id
+          // Map legacy fields to new format
+          const finalMatchType = match_type || 'practice' // Default to practice if not specified
+          const finalMap = map
+          const finalKills = kills || 0
+          const finalAssists = assists || 0
+          const finalDamage = damage || 0
+          const finalSurvivalTime = survival_time || 0
+          const finalPlacement = placement
+          const finalTeamId = team_id || user.team_id
+          const finalSlotId = slot_id || slot // Use slot_id if provided, otherwise use legacy slot
+          const finalPlayerId = player_id || user.id
+          const finalMatchNumber = match_number || (finalMatchType === 'tournament' ? 1 : 0)
 
     // Validate required fields (using the mapped values)
     const requiredFields = ['map', 'kills', 'assists', 'damage', 'survival_time', 'placement']
@@ -267,7 +268,7 @@ export async function POST(request: NextRequest) {
     const performanceData = {
       player_id: finalPlayerId,
       team_id: finalTeamId,
-      match_number: finalMatchType === 'tournament' ? 1 : 0, // Map match_type to match_number
+      match_number: finalMatchNumber, // Use the mapped match_number
       map: finalMap,
       kills: finalKills,
       assists: finalAssists,

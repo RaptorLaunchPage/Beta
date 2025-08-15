@@ -156,29 +156,31 @@ export async function GET(request: NextRequest) {
     const killsTrend = prev7AvgKills > 0 ? ((last7AvgKills - prev7AvgKills) / prev7AvgKills) * 100 : 0
 
     return createSuccessResponse({
-      timeframe,
-      metrics: {
-        totalMatches,
-        totalKills,
-        totalDamage,
-        totalSurvivalTime,
-        wins,
-        avgKills: Math.round(avgKills * 100) / 100,
-        avgDamage: Math.round(avgDamage),
-        avgSurvivalTime: Math.round(avgSurvivalTime * 100) / 100,
-        winRate: Math.round(winRate * 100) / 100
-      },
-      financial: {
-        totalExpenses,
-        totalWinnings,
-        netProfit
-      },
-      trends: {
-        killsTrend: Math.round(killsTrend * 100) / 100,
-        last7DaysMatches: last7Days.length,
-        previous7DaysMatches: previous7Days.length
-      },
-      userRole: user.role
+      stats: {
+        timeframe,
+        metrics: {
+          totalMatches,
+          totalKills,
+          totalDamage,
+          totalSurvivalTime,
+          wins,
+          avgKills: Math.round(avgKills * 100) / 100,
+          avgDamage: Math.round(avgDamage),
+          avgSurvivalTime: Math.round(avgSurvivalTime * 100) / 100,
+          winRate: Math.round(winRate * 100) / 100
+        },
+        financial: {
+          totalExpenses,
+          totalWinnings,
+          netProfit
+        },
+        trends: {
+          killsTrend: Math.round(killsTrend * 100) / 100,
+          last7DaysMatches: last7Days.length,
+          previous7DaysMatches: previous7Days.length
+        },
+        userRole: user.role
+      }
     })
 
   } catch (error) {
