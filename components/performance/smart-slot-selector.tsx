@@ -72,9 +72,11 @@ export function SmartSlotSelector({ value, onValueChange, required, teamId }: Sm
 
   const fetchSlots = async () => {
     try {
-      // Prefer API for consistent role filtering and response
       const params = new URLSearchParams()
-      if (showArchived && filterMonth) {
+      // Admin/Manager by default see all unless filtered
+      if (isAdminOrManager) {
+        params.set('view', 'all')
+      } else if (showArchived && filterMonth) {
         params.set('view', 'archived')
         params.set('month', format(filterMonth, 'yyyy-MM'))
       } else {
@@ -250,7 +252,6 @@ export function SmartSlotSelector({ value, onValueChange, required, teamId }: Sm
                           selected={quickAddData.date}
                           onSelect={(date) => date && setQuickAddData(prev => ({ ...prev, date }))}
                           initialFocus
-                          disabled={(date) => date < new Date()}
                         />
                       </PopoverContent>
                     </Popover>
@@ -416,7 +417,6 @@ export function SmartSlotSelector({ value, onValueChange, required, teamId }: Sm
                         selected={quickAddData.date}
                         onSelect={(date) => date && setQuickAddData(prev => ({ ...prev, date }))}
                         initialFocus
-                        disabled={(date) => date < new Date()}
                       />
                     </PopoverContent>
                   </Popover>

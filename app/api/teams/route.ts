@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Initialize Supabase client
+// Initialize Supabase client config
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables during build')
-}
-
-const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null
-
 // Helper function to get user from request
 async function getUserFromRequest(request: NextRequest) {
-  if (!supabase) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     return { error: 'Service unavailable', status: 503 }
   }
 
@@ -25,12 +17,16 @@ async function getUserFromRequest(request: NextRequest) {
   }
 
   const token = authHeader.replace('Bearer ', '')
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } }
+  })
+
+  const { data: { user }, error: authError } = await userSupabase.auth.getUser(token)
   if (authError || !user) {
     return { error: 'Invalid token', status: 401 }
   }
 
-  const { data: userData, error: userError } = await supabase
+  const { data: userData, error: userError } = await userSupabase
     .from('users')
     .select('id, role, team_id')
     .eq('id', user.id)
@@ -40,22 +36,22 @@ async function getUserFromRequest(request: NextRequest) {
     return { error: 'User not found', status: 404 }
   }
 
-  return { userData }
+  return { userData, userSupabase }
 }
 
 // GET - Fetch teams
 export async function GET(request: NextRequest) {
   try {
-    if (!supabase) {
+    if (!supabaseUrl || !supabaseAnonKey) {
       return NextResponse.json(
         { error: 'Service unavailable' },
         { status: 503 }
       )
     }
 
-    const { userData, error, status } = await getUserFromRequest(request)
-    if (error) {
-      return NextResponse.json({ error }, { status })
+    const { userData, userSupabase, error, status } = await getUserFromRequest(request)
+    if (error || !userSupabase) {
+      return NextResponse.json({ error }, { status: status || 500 })
     }
 
     // Check permissions - allow players to see their own team data
@@ -67,7 +63,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let query = supabase
+    let query = userSupabase
       .from('teams')
       .select('id, name, tier, status')
       .order('name', { ascending: true })

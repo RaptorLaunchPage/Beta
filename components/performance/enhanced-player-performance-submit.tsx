@@ -137,15 +137,24 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
     const fetchSlotDetails = async () => {
       setSlotsLoading(true)
       try {
-        // Fetch slot details including match_count
-        const { data: slotData, error: slotError } = await supabase
-          .from("slots")
-          .select("id, organizer, time_range, date, match_count, team_id")
-          .eq("id", formData.slot)
-          .single()
+        // Fetch slot details via API to honor RLS
+        const token = await getToken()
+        const res = await fetch(`/api/slots?id=${encodeURIComponent(formData.slot)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!res.ok) throw new Error('Failed to load slot')
+        const data = await res.json()
+        const slot = Array.isArray(data) ? data[0] : (data.slots?.[0] || null)
+        if (!slot) throw new Error('Slot not found')
 
-        if (slotError) throw slotError
-        
+        const slotData: SlotWithMatches = {
+          id: slot.id,
+          organizer: slot.organizer,
+          time_range: slot.time_range,
+          date: slot.date,
+          match_count: Number(slot.match_count || 0),
+          team_id: slot.team_id
+        }
         setSelectedSlot(slotData)
 
         // Generate available match numbers based on match_count
@@ -157,7 +166,6 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
           const { data: performanceData, error: performanceError } = await supabase
             .from("performances")
             .select("match_number, kills, damage, placement, id")
-            .eq("slot", formData.slot)
             .eq("player_id", targetPlayerId)
             .order("match_number")
 
@@ -181,7 +189,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
     }
 
     fetchSlotDetails()
-  }, [formData.slot, formData.player_id, profile?.id, isStaff])
+  }, [formData.slot, formData.player_id, profile?.id, isStaff, getToken, toast])
 
   // Reset match number when slot changes
   useEffect(() => {
@@ -248,7 +256,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
         player_id: targetPlayerId,
         team_id: targetTeamId,
         match_number,
-        slot: formData.slot,
+        slot: formData.slot, // can be UUID or number; API handles coercion
         map: formData.map,
         placement,
         kills,

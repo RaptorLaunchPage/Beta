@@ -1,24 +1,33 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { format, isToday, startOfMonth, endOfMonth } from 'date-fns'
+import { createClient } from '@supabase/supabase-js'
+import { format, startOfMonth, endOfMonth } from 'date-fns'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 // GET - Fetch slots with filtering
 export async function GET(request: Request) {
   try {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    
     if (!token) {
       return NextResponse.json({ error: 'Authorization token required' }, { status: 401 })
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    
+    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    })
+
+    const { data: { user }, error: authError } = await userSupabase.auth.getUser(token)
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Get user profile from users table (source of truth)
-    const { data: userData } = await supabase
+    const { data: userData } = await userSupabase
       .from('users')
       .select('id, role, team_id, name, email')
       .eq('id', user.id)
@@ -32,8 +41,9 @@ export async function GET(request: Request) {
     const view = url.searchParams.get('view') // 'current', 'archived', 'all'
     const month = url.searchParams.get('month') // YYYY-MM format
     const teamId = url.searchParams.get('team_id')
+    const id = url.searchParams.get('id')
 
-    let query = supabase
+    let query = userSupabase
       .from('slots')
       .select('*, team:team_id(name, tier)')
       .order('date', { ascending: false })
@@ -53,38 +63,46 @@ export async function GET(request: Request) {
       }
     }
 
-    // Team filtering (for admin/manager)
-    if (teamId && shouldSeeAllData) {
-      query = query.eq('team_id', teamId)
-    }
-
-    // Date filtering
-    const today = format(new Date(), 'yyyy-MM-dd')
-    
-    if (userRole === 'player') {
-      // Players only see today's slots
-      query = query.eq('date', today)
+    // If id filter provided, apply it and bypass date filters
+    if (id) {
+      query = query.eq('id', id)
+      if (teamId && shouldSeeAllData) {
+        query = query.eq('team_id', teamId)
+      }
     } else {
-      switch (view) {
-        case 'current':
-          query = query.eq('date', today)
-          break
-        case 'archived':
-          if (month) {
-            const monthDate = new Date(month + '-01')
-            const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd')
-            const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd')
-            query = query.gte('date', startDate).lte('date', endDate)
-          } else {
-            query = query.lt('date', today)
-          }
-          break
-        case 'all':
-          // No date filtering
-          break
-        default:
-          // Default to current for non-players
-          query = query.eq('date', today)
+      // Team filtering (for admin/manager)
+      if (teamId && shouldSeeAllData) {
+        query = query.eq('team_id', teamId)
+      }
+
+      // Date filtering
+      const today = format(new Date(), 'yyyy-MM-dd')
+
+      if (userRole === 'player') {
+        // Players only see today's slots
+        query = query.eq('date', today)
+      } else {
+        switch (view) {
+          case 'current':
+            query = query.eq('date', today)
+            break
+          case 'archived':
+            if (month) {
+              const monthDate = new Date(month + '-01')
+              const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd')
+              const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd')
+              query = query.gte('date', startDate).lte('date', endDate)
+            } else {
+              query = query.lt('date', today)
+            }
+            break
+          case 'all':
+            // No date filtering
+            break
+          default:
+            // Default to current for non-players
+            query = query.eq('date', today)
+        }
       }
     }
 
@@ -110,20 +128,26 @@ export async function GET(request: Request) {
 // POST - Create new slot (managers/coaches/admins only)
 export async function POST(request: Request) {
   try {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    
     if (!token) {
       return NextResponse.json({ error: 'Authorization token required' }, { status: 401 })
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    
+    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    })
+
+    const { data: { user }, error: authError } = await userSupabase.auth.getUser(token)
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Get user profile from users table
-    const { data: userData } = await supabase
+    const { data: userData } = await userSupabase
       .from('users')
       .select('id, role, team_id, name, email')
       .eq('id', user.id)
@@ -166,7 +190,7 @@ export async function POST(request: Request) {
     }
 
     // Create slot
-    const { data: slot, error: slotError } = await supabase
+    const { data: slot, error: slotError } = await userSupabase
       .from('slots')
       .insert({
         team_id,
@@ -188,7 +212,7 @@ export async function POST(request: Request) {
 
     // Create corresponding slot expense entry
     if (slot && slot.slot_rate > 0) {
-      const { error: expenseError } = await supabase
+      const { error: expenseError } = await userSupabase
         .from('slot_expenses')
         .insert({
           slot_id: slot.id,
@@ -235,20 +259,26 @@ export async function POST(request: Request) {
 // DELETE - Delete slot (managers/coaches/admins only)
 export async function DELETE(request: Request) {
   try {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    
     if (!token) {
       return NextResponse.json({ error: 'Authorization token required' }, { status: 401 })
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    
+    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    })
+
+    const { data: { user }, error: authError } = await userSupabase.auth.getUser(token)
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Get user profile from users table
-    const { data: userData } = await supabase
+    const { data: userData } = await userSupabase
       .from('users')
       .select('id, role, team_id')
       .eq('id', user.id)
@@ -272,7 +302,7 @@ export async function DELETE(request: Request) {
     }
 
     // Get slot details for permission check
-    const { data: slot } = await supabase
+    const { data: slot } = await userSupabase
       .from('slots')
       .select('team_id')
       .eq('id', slotId)
@@ -290,7 +320,7 @@ export async function DELETE(request: Request) {
     }
 
     // Delete slot (cascade will handle slot_expenses)
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await userSupabase
       .from('slots')
       .delete()
       .eq('id', slotId)
