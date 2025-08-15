@@ -46,7 +46,16 @@ export class SecureProfileCreation {
       const defaultRoleLevel = 10 // Pending role level
       
       // Create profile data - the user ID comes from authenticated session
-      const profileData: any = {
+      const profileData: {
+        id: string;
+        email: string;
+        role: string;
+        name?: string;
+        discord_tag?: string;
+        tier?: string;
+        team_id?: string;
+        avatar_url?: string;
+      } = {
         id: userId, // This now references an existing auth.users.id
         email: email,
         name: name || email.split('@')[0] || 'User',
@@ -116,11 +125,12 @@ export class SecureProfileCreation {
         profile: newProfile
       }
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Profile creation error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       return {
         success: false,
-        error: error.message || 'Unknown error occurred'
+        error: errorMessage
       }
     }
   }

@@ -3,10 +3,7 @@
 import React from "react"
 import { VideoBackground } from "@/components/video-background"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { FadeInOnScroll } from "@/components/ui/fade-in-on-scroll"
-import { Calendar, Sparkles, Trophy, Users } from "lucide-react"
 import { PublicNavigation } from "@/components/public/PublicNavigation"
 import { PublicFooter } from "@/components/public/PublicFooter"
 
@@ -181,14 +178,3 @@ function TimelineCard({ year, items }: { year: string; items: string[] }) {
   )
 }
 
-function Offer({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
-  return (
-    <div className="bg-white/5 rounded p-3">
-      <div className="flex items-center gap-2 text-white/90">
-        {icon}
-        <span className="font-semibold">{title}</span>
-      </div>
-      <div className="text-white/70 text-sm mt-1">{desc}</div>
-    </div>
-  )
-}

@@ -334,7 +334,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
         value: matchNum.toString(),
         label: `Match ${matchNum}`,
         disabled: isCompleted,
-        subtitle: isCompleted ? `Already submitted (${existing!.kills}K, ${existing!.damage}D)` : 'Available'
+        subtitle: isCompleted ? `Already submitted (${existing?.kills || 0}K, ${existing?.damage || 0}D)` : 'Available'
       }
     })
   }

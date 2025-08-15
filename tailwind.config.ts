@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
-// all in fixtures is set to tailwind v3 as interims solutions
+// Optimized Tailwind CSS configuration for the Raptor Esports Hub
+// Includes specific content paths for better build performance
 
 const config: Config = {
     darkMode: ["class"],
@@ -8,7 +9,8 @@ const config: Config = {
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "*.{js,ts,jsx,tsx,mdx}"
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
+    "./hooks/**/*.{js,ts,jsx,tsx,mdx}"
   ],
   theme: {
   	extend: {

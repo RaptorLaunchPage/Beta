@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     for (const r of rows || []) settings[r.key] = r.value
 
     return NextResponse.json({ settings })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -87,6 +87,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 }) }
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Internal error'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
+  }
 }

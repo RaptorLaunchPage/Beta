@@ -184,7 +184,7 @@ export default function OptimizedDashboardPage() {
       loadDashboardData()
       // Defer preload to after first paint to avoid competing with initial load
       setTimeout(() => {
-        dataService.preloadEssentialData(profile!.id, profile!.role)
+        profile && dataService.preloadEssentialData(profile.id, profile.role)
       }, 0)
     }
   }, [profile, selectedTimeframe])

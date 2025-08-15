@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       const role = item.key.replace('agreement_content_', '')
       try {
         acc[role] = JSON.parse(item.value)
-      } catch (e) {
+      } catch (e: unknown) {
         // If parsing fails, create default structure
         acc[role] = {
           role,
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         }
       }
       return acc
-    }, {} as Record<string, any>)
+    }, {} as Record<string, { role: string; content: string; lastUpdated: string }>)
 
     // Ensure all roles have entries
     Object.keys(CURRENT_AGREEMENT_VERSIONS).forEach(role => {
