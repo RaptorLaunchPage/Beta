@@ -72,7 +72,7 @@ export async function GET(request: Request) {
           query = query.eq('team_id', user.team_id)
         } else {
           // No team assigned: return empty result
-          return createSuccessResponse([], 'No slots found for user without team')
+          return createSuccessResponse([])
         }
       }
     }
@@ -139,11 +139,7 @@ export async function GET(request: Request) {
       })
     }
 
-    return createSuccessResponse({
-      slots: slots || [],
-      view: userRole === 'player' ? 'current' : (view || 'current'),
-      userRole
-    })
+    return createSuccessResponse(slots || [])
 
   } catch (error) {
     console.error('Error in slots API:', error)
@@ -397,7 +393,7 @@ export async function DELETE(request: Request) {
       })
     }
 
-    return createSuccessResponse(null, 'Slot deleted successfully')
+    return createSuccessResponse({ success: true }, 'Slot deleted successfully')
 
   } catch (error) {
     console.error('Error in slot deletion:', error)

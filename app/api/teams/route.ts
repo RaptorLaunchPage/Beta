@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('teams')
-      .select('id, name, tier, status')
+      .select('id, name, tier, status, coach_id, created_at')
       .order('name', { ascending: true })
 
     // Role-based filtering

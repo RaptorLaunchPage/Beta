@@ -52,15 +52,15 @@ export async function GET(request: NextRequest) {
     // Try a simplified query first without relationships
     let query = supabase
       .from("performances")
-      .select("*", { count: 'exact' })
+      .select("*, users:player_id(id, name, email), teams:team_id(id, name, tier)", { count: 'exact' })
 
     const { searchParams } = new URL(request.url)
     const timeframe = parseInt(searchParams.get('timeframe') || '0')
     const teamId = searchParams.get('teamId')
     const playerId = searchParams.get('playerId')
     const map = searchParams.get('map')
-    const limitParam = searchParams.get('limit')
-    const limit = limitParam ? Math.min(parseInt(limitParam), 1000) : 0
+    const limitParam = parseInt(searchParams.get('limit') || '0')
+    const limit = limitParam > 0 ? Math.min(limitParam, 1000) : 0
 
     // Calculate date range if timeframe is specified
     if (timeframe > 0) {
@@ -127,10 +127,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    return createSuccessResponse({
-      performances: performances || [],
-      count: count || 0
-    })
+    return createSuccessResponse(performances || [])
 
   } catch (error) {
     console.error('Error in performances API:', error)
@@ -255,7 +252,7 @@ export async function POST(request: NextRequest) {
     const { data: performance, error: insertError } = await supabase
       .from('performances')
       .insert(performanceData)
-      .select()
+      .select('*, users:player_id(id, name, email), teams:team_id(id, name, tier)')
       .single()
 
     if (insertError) {

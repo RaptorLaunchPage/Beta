@@ -150,8 +150,26 @@ export function createErrorResponse(error: ApiError): NextResponse {
   )
 }
 
-// Standardized success response function
+// Standardized success response function - returns data directly for compatibility
 export function createSuccessResponse<T>(data: T, message?: string, status: number = 200): NextResponse {
+  // For arrays and objects, return them directly for frontend compatibility
+  if (Array.isArray(data) || (typeof data === 'object' && data !== null)) {
+    return NextResponse.json(data, { status })
+  }
+  
+  // For primitive values, wrap them in a data property
+  return NextResponse.json(
+    {
+      data,
+      message,
+      success: true
+    },
+    { status }
+  )
+}
+
+// Alternative function for when you want to explicitly wrap data
+export function createWrappedSuccessResponse<T>(data: T, message?: string, status: number = 200): NextResponse {
   return NextResponse.json(
     {
       data,
