@@ -258,11 +258,10 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Insert
-    const { data: inserted, error: insertError } = await userSupabase
+    // Insert without selecting rows (avoid RLS select side-effects)
+    const { error: insertError } = await userSupabase
       .from('performances')
       .insert(sanitizedForDb)
-      .select()
 
     if (insertError) {
       console.error('Error inserting performance(s):', insertError)
@@ -276,10 +275,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Auto-create attendance for each inserted performance (best-effort)
+    // Auto-create attendance for each input record (best-effort)
     try {
-      for (let i = 0; i < (inserted?.length || 0); i++) {
-        const perf = inserted![i]
+      for (let i = 0; i < sanitizedForDb.length; i++) {
+        const perf = sanitizedForDb[i]
         const slotUuid = slotUuidForAttendance[i]
         await createMatchAttendance(userSupabase, perf, userData!, slotUuid)
       }
@@ -289,7 +288,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      performance: Array.isArray(payload) ? inserted : inserted?.[0],
       message: 'Performance submitted successfully'
     })
 
