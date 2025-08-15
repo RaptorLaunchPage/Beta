@@ -1,76 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Initialize Supabase client with anon key (safer for development)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables during build')
-}
-
-// Helper function to get user from request
-async function getUserFromRequest(request: NextRequest) {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return { error: 'Service unavailable', status: 503 }
-  }
-
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader) {
-    return { error: 'Authorization header required', status: 401 }
-  }
-
-  const token = authHeader.replace('Bearer ', '')
-  
-  // Create a client with the user's token for RLS
-  const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }
-  })
-
-  const { data: { user }, error: authError } = await userSupabase.auth.getUser(token)
-  if (authError || !user) {
-    return { error: 'Invalid token', status: 401 }
-  }
-
-  // Get user data using the authenticated client
-  const { data: userData, error: userError } = await userSupabase
-    .from('users')
-    .select('id, role, team_id')
-    .eq('id', user.id)
-    .single()
-
-  if (userError || !userData) {
-    return { error: 'User not found', status: 404 }
-  }
-
-  return { userData, userSupabase }
-}
-
-function isUuid(value: any): value is string {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
-}
+import { 
+  authenticateRequest, 
+  createErrorResponse, 
+  createSuccessResponse, 
+  checkRoleAccess,
+  validateRequiredFields,
+  isValidUuid,
+  handleCors
+} from '@/lib/api-utils'
 
 // GET - Fetch performances
 export async function GET(request: NextRequest) {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json(
-        { error: 'Service unavailable' },
-        { status: 503 }
-      )
+    // Handle CORS
+    const corsResponse = handleCors(request)
+    if (corsResponse) return corsResponse
+
+    // Authenticate request
+    const { user, supabase, error: authError } = await authenticateRequest(request)
+    if (authError) {
+      return createErrorResponse(authError)
     }
 
-    const { userData, userSupabase, error, status } = await getUserFromRequest(request)
-    if (error || !userSupabase) {
-      return NextResponse.json({ error: error || 'Service unavailable' }, { status: status || 500 })
+    if (!user || !supabase) {
+      return createErrorResponse({
+        error: 'Authentication failed',
+        code: 'AUTH_FAILED',
+        status: 401
+      })
     }
 
     // First check if performances table exists and is accessible
-    const { data: testQuery, error: testError } = await userSupabase
+    const { data: testQuery, error: testError } = await supabase
       .from("performances")
       .select("id")
       .limit(1)
@@ -79,16 +40,17 @@ export async function GET(request: NextRequest) {
       console.error('Performances table access error:', testError)
       // If table doesn't exist or no access, return empty array instead of error
       if (testError.code === 'PGRST116' || testError.message?.includes('relation') || testError.message?.includes('does not exist')) {
-        return NextResponse.json([])
+        return createSuccessResponse([])
       }
-      return NextResponse.json(
-        { error: `Database error: ${testError.message}` },
-        { status: 500 }
-      )
+      return createErrorResponse({
+        error: `Database error: ${testError.message}`,
+        code: 'DATABASE_ERROR',
+        status: 500
+      })
     }
 
     // Try a simplified query first without relationships
-    let query = userSupabase
+    let query = supabase
       .from("performances")
       .select("*", { count: 'exact' })
 
@@ -98,292 +60,222 @@ export async function GET(request: NextRequest) {
     const playerId = searchParams.get('playerId')
     const map = searchParams.get('map')
     const limitParam = searchParams.get('limit')
-    const offsetParam = searchParams.get('offset')
-    const isPaginated = !!(limitParam || offsetParam)
-    const limit = Math.min(parseInt(limitParam || '0') || 0, 100)
-    const offset = Math.max(parseInt(offsetParam || '0') || 0, 0)
+    const limit = limitParam ? Math.min(parseInt(limitParam), 1000) : 0
 
+    // Calculate date range if timeframe is specified
     if (timeframe > 0) {
-      const start = new Date(); start.setDate(start.getDate() - timeframe)
-      query = query.gte('created_at', start.toISOString())
+      const endDate = new Date()
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - timeframe)
+      query = query.gte('created_at', startDate.toISOString()).lte('created_at', endDate.toISOString())
     }
 
-    // Apply role-based filtering
-    if (userData!.role === "player") {
-      // Players can see their own performance AND their team's performance
-      if (userData!.team_id) {
-        query = query.or(`player_id.eq.${userData!.id},team_id.eq.${userData!.team_id}`)
-      } else {
-        query = query.eq("player_id", userData!.id)
+    // Apply filters
+    if (teamId) {
+      if (!isValidUuid(teamId)) {
+        return createErrorResponse({
+          error: 'Invalid team ID format',
+          code: 'INVALID_UUID',
+          status: 400
+        })
       }
-    } else if (userData!.role === "coach" && userData!.team_id) {
-      query = query.eq("team_id", userData!.team_id)
-    }
-    // Admin, manager, and analyst can see all performances (no filtering)
-
-    // Additional filters
-    if (teamId && (userData!.role === 'admin' || userData!.role === 'manager')) {
       query = query.eq('team_id', teamId)
     }
+
     if (playerId) {
+      if (!isValidUuid(playerId)) {
+        return createErrorResponse({
+          error: 'Invalid player ID format',
+          code: 'INVALID_UUID',
+          status: 400
+        })
+      }
       query = query.eq('player_id', playerId)
     }
+
     if (map) {
       query = query.eq('map', map)
     }
 
-    let finalQuery = query.order("created_at", { ascending: false })
-    if (isPaginated && limit > 0) {
-      finalQuery = finalQuery.range(offset, offset + limit - 1)
-    }
-
-    const { data, error: queryError, count } = await finalQuery
-
-    if (queryError) {
-      console.error('Error fetching performances:', queryError)
-      return NextResponse.json(
-        { error: `Query error: ${queryError.message}` },
-        { status: 500 }
-      )
-    }
-
-    if (isPaginated) {
-      return NextResponse.json({ items: data || [], total: count ?? (data?.length || 0) })
-    }
-    return NextResponse.json(data || [])
-
-  } catch (error) {
-    console.error('Error in performances API:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-}
-
-// POST - Submit performance data (supports single object or array for batch)
-export async function POST(request: NextRequest) {
-  try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json(
-        { error: 'Service unavailable' },
-        { status: 503 }
-      )
-    }
-
-    const { userData, userSupabase, error, status } = await getUserFromRequest(request)
-    if (error || !userSupabase) {
-      return NextResponse.json({ error: error || 'Service unavailable' }, { status: status || 500 })
-    }
-
-    const payload = await request.json()
-    const items = Array.isArray(payload) ? payload : [payload]
-
-    // Validate required fields per item
-    for (const item of items) {
-      const requiredFields = ['match_number', 'map']
-      const missingFields = requiredFields.filter(field => !item[field])
-      if (missingFields.length > 0) {
-        return NextResponse.json(
-          { error: `Missing required fields: ${missingFields.join(', ')}` },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Role-based assignment/validation
-    const sanitizedForDb: any[] = []
-    const slotUuidForAttendance: (string | null)[] = []
-
-    for (const item of items) {
-      const record: any = { ...item }
-
-      if (userData!.role === 'player') {
-        record.player_id = userData!.id
-        record.team_id = userData!.team_id
-      } else if (['coach', 'manager', 'admin'].includes(userData!.role)) {
-        if (!record.player_id || !record.team_id) {
-          return NextResponse.json(
-            { error: 'Player ID and Team ID are required for staff submissions' },
-            { status: 400 }
-          )
-        }
-        if (userData!.role === 'coach' && userData!.team_id !== record.team_id) {
-          return NextResponse.json(
-            { error: 'Coaches can only submit performance data for players in their own team' },
-            { status: 403 }
-          )
-        }
+    // Apply role-based access control
+    if (user.role === 'player') {
+      if (user.team_id) {
+        query = query.or(`player_id.eq.${user.id},team_id.eq.${user.team_id}`)
       } else {
-        return NextResponse.json(
-          { error: 'Insufficient permissions to submit performance data' },
-          { status: 403 }
-        )
+        query = query.eq('player_id', user.id)
       }
+    } else if (user.role === 'coach' && user.team_id) {
+      query = query.eq('team_id', user.team_id)
+    } else if (user.role === 'analyst' && user.team_id) {
+      query = query.eq('team_id', user.team_id)
+    }
 
-      if (!record.team_id) {
-        return NextResponse.json(
-          { error: 'Player must be assigned to a team to submit performance' },
-          { status: 400 }
-        )
-      }
+    // Apply limit if specified
+    if (limit > 0) {
+      query = query.limit(limit)
+    }
 
-      // Normalize numeric fields and defaults
-      const isSlotUuid = isUuid(record.slot)
-      const slotDbValue = isSlotUuid
-        ? 0 // DB expects integer NOT NULL; use 0 when a UUID was provided
-        : (record.slot != null && record.slot !== '' ? Number(record.slot) : 0)
+    const { data: performances, error, count } = await query.order('created_at', { ascending: false })
 
-      record.match_number = Number(record.match_number)
-      record.placement = record.placement != null && record.placement !== '' ? Number(record.placement) : null
-      record.kills = Number(record.kills || 0)
-      record.damage = Number(record.damage || 0)
-      record.survival_time = Number(record.survival_time || 0)
-      record.assists = Number(record.assists || 0)
-
-      slotUuidForAttendance.push(isSlotUuid ? String(record.slot) : null)
-
-      sanitizedForDb.push({
-        player_id: record.player_id,
-        team_id: record.team_id,
-        match_number: record.match_number,
-        slot: slotDbValue,
-        map: record.map,
-        placement: record.placement,
-        kills: record.kills,
-        damage: record.damage,
-        survival_time: record.survival_time,
-        assists: record.assists,
-        added_by: userData!.id
+    if (error) {
+      console.error('Error fetching performances:', error)
+      return createErrorResponse({
+        error: 'Failed to fetch performances',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: error.message
       })
     }
 
-    // Insert without selecting rows (avoid RLS select side-effects)
-    const { error: insertError } = await userSupabase
-      .from('performances')
-      .insert(sanitizedForDb)
-
-    if (insertError) {
-      console.error('Error inserting performance(s):', insertError)
-      const message = insertError.message || ''
-      const migrationHint = message.includes('attendances') && message.includes('date')
-        ? 'Attendance trigger mismatch detected. Please apply scripts/15-fix-auto-attendance-trigger.sql to update triggers.'
-        : ''
-      return NextResponse.json(
-        { error: `Failed to submit performance: ${message}. ${migrationHint}`.trim() },
-        { status: 500 }
-      )
-    }
-
-    // Auto-create attendance for each input record (best-effort)
-    try {
-      for (let i = 0; i < sanitizedForDb.length; i++) {
-        const perf = sanitizedForDb[i]
-        const slotUuid = slotUuidForAttendance[i]
-        await createMatchAttendance(userSupabase, perf, userData!, slotUuid)
-      }
-    } catch (attendanceError) {
-      console.warn('Failed to create match attendance:', attendanceError)
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Performance submitted successfully'
+    return createSuccessResponse({
+      performances: performances || [],
+      count: count || 0
     })
 
   } catch (error) {
-    console.error('Error in performance submission:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('Error in performances API:', error)
+    return createErrorResponse({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      status: 500
+    })
   }
 }
 
-// Helper function to create match attendance
-async function createMatchAttendance(userSupabase: any, performance: any, userData: any, slotUuid?: string | null) {
-  // Use slot date if available, else current date
-  let effectiveDate = new Date().toISOString().split('T')[0]
+// POST - Create new performance
+export async function POST(request: NextRequest) {
+  try {
+    // Handle CORS
+    const corsResponse = handleCors(request)
+    if (corsResponse) return corsResponse
 
-  if (slotUuid) {
-    const { data: slotRow } = await userSupabase
-      .from('slots')
-      .select('date')
-      .eq('id', slotUuid)
-      .single()
-    if (slotRow?.date) {
-      effectiveDate = slotRow.date
+    // Authenticate request
+    const { user, supabase, error: authError } = await authenticateRequest(request)
+    if (authError) {
+      return createErrorResponse(authError)
     }
-  }
-  
-  // Check if session already exists for this match/date
-  const { data: existingSession } = await userSupabase
-    .from('sessions')
-    .select('id')
-    .eq('team_id', performance.team_id)
-    .eq('date', effectiveDate)
-    .eq('session_type', 'tournament')
-    .eq('session_subtype', 'Scrims')
-    .single()
 
-  let sessionId = existingSession?.id
-
-  // Create session if it doesn't exist
-  if (!sessionId) {
-    const sessionTitle = `Match ${performance.match_number} - ${performance.map}`
-    const { data: newSession, error: sessionCreateError } = await userSupabase
-      .from('sessions')
-      .insert({
-        team_id: performance.team_id,
-        session_type: 'tournament',
-        session_subtype: 'Scrims',
-        date: effectiveDate,
-        start_time: '18:00:00',
-        end_time: '22:00:00',
-        cutoff_time: null,
-        title: sessionTitle,
-        is_mandatory: false,
-        created_by: userData.id
+    if (!user || !supabase) {
+      return createErrorResponse({
+        error: 'Authentication failed',
+        code: 'AUTH_FAILED',
+        status: 401
       })
+    }
+
+    // Check permissions
+    const allowedRoles = ['admin', 'manager', 'coach', 'player']
+    if (!checkRoleAccess(user.role, allowedRoles)) {
+      return createErrorResponse({
+        error: 'Insufficient permissions to create performance',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        status: 403
+      })
+    }
+
+    const body = await request.json()
+    const {
+      match_type,
+      map,
+      kills,
+      assists,
+      damage,
+      survival_time,
+      placement,
+      team_id,
+      slot_id
+    } = body
+
+    // Validate required fields
+    const validation = validateRequiredFields(body, ['match_type', 'kills', 'assists', 'damage', 'survival_time', 'placement'])
+    if (!validation.valid) {
+      return createErrorResponse({
+        error: `Missing required fields: ${validation.missing.join(', ')}`,
+        code: 'MISSING_REQUIRED_FIELDS',
+        status: 400
+      })
+    }
+
+    // Validate numeric fields
+    const numericFields = ['kills', 'assists', 'damage', 'survival_time', 'placement']
+    for (const field of numericFields) {
+      if (typeof body[field] !== 'number' || body[field] < 0) {
+        return createErrorResponse({
+          error: `${field} must be a non-negative number`,
+          code: 'INVALID_NUMERIC_VALUE',
+          status: 400
+        })
+      }
+    }
+
+    // Validate match_type
+    const validMatchTypes = ['practice', 'tournament', 'scrim']
+    if (!validMatchTypes.includes(match_type)) {
+      return createErrorResponse({
+        error: 'Invalid match type',
+        code: 'INVALID_MATCH_TYPE',
+        status: 400
+      })
+    }
+
+    // For players, ensure they can only create performances for themselves
+    if (user.role === 'player') {
+      if (team_id && team_id !== user.team_id) {
+        return createErrorResponse({
+          error: 'Players can only create performances for their own team',
+          code: 'TEAM_ACCESS_DENIED',
+          status: 403
+        })
+      }
+    }
+
+    // For coaches, ensure they can only create performances for their team
+    if (user.role === 'coach' && team_id && team_id !== user.team_id) {
+      return createErrorResponse({
+        error: 'Coaches can only create performances for their own team',
+        code: 'TEAM_ACCESS_DENIED',
+        status: 403
+      })
+    }
+
+    // Create performance
+    const performanceData = {
+      player_id: user.id,
+      team_id: team_id || user.team_id,
+      match_type,
+      map: map || null,
+      kills,
+      assists,
+      damage,
+      survival_time,
+      placement,
+      slot_id: slot_id || null
+    }
+
+    const { data: performance, error: insertError } = await supabase
+      .from('performances')
+      .insert(performanceData)
       .select()
       .single()
 
-    if (sessionCreateError) {
-      throw new Error(`Failed to create session: ${sessionCreateError.message}`)
+    if (insertError) {
+      console.error('Error creating performance:', insertError)
+      return createErrorResponse({
+        error: 'Failed to create performance',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: insertError.message
+      })
     }
 
-    sessionId = newSession.id
-  }
+    return createSuccessResponse(performance, 'Performance created successfully', 201)
 
-  // Check if attendance already exists
-  const { data: existingAttendance } = await userSupabase
-    .from('attendances')
-    .select('id')
-    .eq('session_id', sessionId)
-    .eq('player_id', performance.player_id)
-    .single()
-
-  if (!existingAttendance) {
-    // Create attendance record with schema-compliant fields
-    const attendanceData = {
-      player_id: performance.player_id,
-      team_id: performance.team_id,
-      date: effectiveDate,
-      session_time: 'Scrims',
-      session_id: sessionId,
-      status: 'present',
-      source: 'auto',
-      slot_id: slotUuid || null,
-      created_at: new Date().toISOString()
-    }
-
-    const { error: attendanceCreateError } = await userSupabase
-      .from('attendances')
-      .insert(attendanceData)
-      .select()
-
-    if (attendanceCreateError) {
-      throw new Error(`Failed to create attendance: ${attendanceCreateError.message}`)
-    }
+  } catch (error) {
+    console.error('Error in performance creation:', error)
+    return createErrorResponse({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      status: 500
+    })
   }
 }
