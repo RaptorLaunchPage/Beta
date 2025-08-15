@@ -9,10 +9,9 @@
 
 DO $$
 DECLARE
-    table_name text;
-    column_name text;
-    data_type text;
-    is_nullable text;
+    col_name text;
+    col_type text;
+    col_nullable text;
     constraint_name text;
     constraint_type text;
 BEGIN
@@ -20,9 +19,8 @@ BEGIN
     
     -- Check performances table structure
     RAISE NOTICE '--- PERFORMANCES TABLE ---';
-    FOR table_name, column_name, data_type, is_nullable IN
+    FOR col_name, col_type, col_nullable IN
         SELECT 
-            table_name,
             column_name,
             data_type,
             is_nullable
@@ -30,7 +28,7 @@ BEGIN
         WHERE table_name = 'performances' 
         ORDER BY ordinal_position
     LOOP
-        RAISE NOTICE 'Column: % | Type: % | Nullable: %', column_name, data_type, is_nullable;
+        RAISE NOTICE 'Column: % | Type: % | Nullable: %', col_name, col_type, col_nullable;
     END LOOP;
     
     -- Check performances table constraints
@@ -47,9 +45,8 @@ BEGIN
     
     -- Check slots table structure
     RAISE NOTICE '--- SLOTS TABLE ---';
-    FOR table_name, column_name, data_type, is_nullable IN
+    FOR col_name, col_type, col_nullable IN
         SELECT 
-            table_name,
             column_name,
             data_type,
             is_nullable
@@ -57,14 +54,13 @@ BEGIN
         WHERE table_name = 'slots' 
         ORDER BY ordinal_position
     LOOP
-        RAISE NOTICE 'Column: % | Type: % | Nullable: %', column_name, data_type, is_nullable;
+        RAISE NOTICE 'Column: % | Type: % | Nullable: %', col_name, col_type, col_nullable;
     END LOOP;
     
     -- Check sessions table structure
     RAISE NOTICE '--- SESSIONS TABLE ---';
-    FOR table_name, column_name, data_type, is_nullable IN
+    FOR col_name, col_type, col_nullable IN
         SELECT 
-            table_name,
             column_name,
             data_type,
             is_nullable
@@ -72,14 +68,13 @@ BEGIN
         WHERE table_name = 'sessions' 
         ORDER BY ordinal_position
     LOOP
-        RAISE NOTICE 'Column: % | Type: % | Nullable: %', column_name, data_type, is_nullable;
+        RAISE NOTICE 'Column: % | Type: % | Nullable: %', col_name, col_type, col_nullable;
     END LOOP;
     
     -- Check attendances table structure
     RAISE NOTICE '--- ATTENDANCES TABLE ---';
-    FOR table_name, column_name, data_type, is_nullable IN
+    FOR col_name, col_type, col_nullable IN
         SELECT 
-            table_name,
             column_name,
             data_type,
             is_nullable
@@ -87,7 +82,7 @@ BEGIN
         WHERE table_name = 'attendances' 
         ORDER BY ordinal_position
     LOOP
-        RAISE NOTICE 'Column: % | Type: % | Nullable: %', column_name, data_type, is_nullable;
+        RAISE NOTICE 'Column: % | Type: % | Nullable: %', col_name, col_type, col_nullable;
     END LOOP;
     
 END $$;
