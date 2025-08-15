@@ -182,10 +182,12 @@ export default function OptimizedDashboardPage() {
   useEffect(() => {
     if (profile) {
       loadDashboardData()
-      // Defer preload to after first paint to avoid competing with initial load
-      setTimeout(() => {
-        dataService.preloadEssentialData(profile!.id, profile!.role)
-      }, 0)
+      // Defer preload to after paint
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          dataService.preloadEssentialData(profile!.id, profile!.role)
+        }, 0)
+      })
     }
   }, [profile, selectedTimeframe])
 
@@ -669,8 +671,8 @@ export default function OptimizedDashboardPage() {
         </div>
       </div>
 
-      {/* Performance Metrics Cards or No Data State */}
-      {dataFetched && stats && stats.totalMatches === 0 ? (
+      {/* Optional Welcome Banner when there are no matches yet */}
+      {dataFetched && stats && stats.totalMatches === 0 && (
         <Card>
           <CardContent className="p-8 text-center">
             <div className="text-muted-foreground mb-4">
@@ -692,8 +694,9 @@ export default function OptimizedDashboardPage() {
             </div>
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-8">
+      )}
+
+      <div className="space-y-8">
           {/* Main Overview Section */}
           <Card className="bg-black/40 backdrop-blur-lg border border-white/20 shadow-2xl">
             <CardHeader>
