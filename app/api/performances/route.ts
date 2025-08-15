@@ -50,6 +50,10 @@ async function getUserFromRequest(request: NextRequest) {
   return { userData, userSupabase }
 }
 
+function isUuid(value: any): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
 // GET - Fetch performances
 export async function GET(request: NextRequest) {
   try {
@@ -157,7 +161,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Submit performance data
+// POST - Submit performance data (supports single object or array for batch)
 export async function POST(request: NextRequest) {
   try {
     if (!supabaseUrl || !supabaseAnonKey) {
@@ -172,118 +176,88 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error || 'Service unavailable' }, { status: status || 500 })
     }
 
-    const performanceData = await request.json()
+    const payload = await request.json()
+    const items = Array.isArray(payload) ? payload : [payload]
 
-    // Validate required fields
-    const requiredFields = ['match_number', 'map']
-    const missingFields = requiredFields.filter(field => !performanceData[field])
-    
-    if (missingFields.length > 0) {
-      return NextResponse.json(
-        { error: `Missing required fields: ${missingFields.join(', ')}` },
-        { status: 400 }
-      )
-    }
-
-    // Role-based validation and data assignment
-    if (userData!.role === 'player') {
-      // Players can only submit their own performance
-      performanceData.player_id = userData!.id
-      performanceData.team_id = userData!.team_id
-    } else if (['coach', 'manager', 'admin'].includes(userData!.role)) {
-      // Coaches, managers, and admins can submit for other players
-      
-      // Validate required fields for staff submissions
-      if (!performanceData.player_id || !performanceData.team_id) {
+    // Validate required fields per item
+    for (const item of items) {
+      const requiredFields = ['match_number', 'map']
+      const missingFields = requiredFields.filter(field => !item[field])
+      if (missingFields.length > 0) {
         return NextResponse.json(
-          { error: 'Player ID and Team ID are required for staff submissions' },
+          { error: `Missing required fields: ${missingFields.join(', ')}` },
           { status: 400 }
         )
       }
+    }
 
-      // Coaches can only submit for players in their team
-      if (userData!.role === 'coach' && userData!.team_id !== performanceData.team_id) {
+    // Role-based assignment/validation
+    const sanitized = [] as any[]
+    for (const item of items) {
+      const record: any = { ...item }
+
+      if (userData!.role === 'player') {
+        record.player_id = userData!.id
+        record.team_id = userData!.team_id
+      } else if (['coach', 'manager', 'admin'].includes(userData!.role)) {
+        if (!record.player_id || !record.team_id) {
+          return NextResponse.json(
+            { error: 'Player ID and Team ID are required for staff submissions' },
+            { status: 400 }
+          )
+        }
+        if (userData!.role === 'coach' && userData!.team_id !== record.team_id) {
+          return NextResponse.json(
+            { error: 'Coaches can only submit performance data for players in their own team' },
+            { status: 403 }
+          )
+        }
+      } else {
         return NextResponse.json(
-          { error: 'Coaches can only submit performance data for players in their own team' },
+          { error: 'Insufficient permissions to submit performance data' },
           { status: 403 }
         )
       }
 
-      // Verify the player exists and belongs to the specified team
-      const { data: playerData, error: playerError } = await userSupabase
-        .from('users')
-        .select('id, team_id, role, status')
-        .eq('id', performanceData.player_id)
-        .single()
-
-      if (playerError || !playerData) {
+      if (!record.team_id) {
         return NextResponse.json(
-          { error: 'Player not found' },
-          { status: 404 }
-        )
-      }
-
-      if (playerData.role !== 'player') {
-        return NextResponse.json(
-          { error: 'Selected user is not a player' },
+          { error: 'Player must be assigned to a team to submit performance' },
           { status: 400 }
         )
       }
 
-      if (playerData.team_id !== performanceData.team_id) {
-        return NextResponse.json(
-          { error: 'Player does not belong to the specified team' },
-          { status: 400 }
-        )
-      }
+      // Normalize numeric fields and defaults
+      record.match_number = Number(record.match_number)
+      record.placement = record.placement != null ? Number(record.placement) : null
+      record.kills = Number(record.kills || 0)
+      record.damage = Number(record.damage || 0)
+      record.survival_time = Number(record.survival_time || 0)
+      record.assists = Number(record.assists || 0)
+      record.added_by = userData!.id
 
-      if (playerData.status !== 'Active') {
-        return NextResponse.json(
-          { error: 'Cannot submit performance for inactive players' },
-          { status: 400 }
-        )
-      }
-    } else {
-      // Other roles (like analyst) cannot submit performance data
-      return NextResponse.json(
-        { error: 'Insufficient permissions to submit performance data' },
-        { status: 403 }
-      )
-    }
-
-    // Validate team assignment for players only
-    if (userData!.role === 'player' && !performanceData.team_id && userData!.team_id) {
-      performanceData.team_id = userData!.team_id
-    }
-
-    if (!performanceData.team_id) {
-      return NextResponse.json(
-        { error: 'Player must be assigned to a team to submit performance' },
-        { status: 400 }
-      )
-    }
-
-    // Insert performance data
-    const { data: newPerformance, error: insertError } = await userSupabase
-      .from('performances')
-      .insert({
-        player_id: performanceData.player_id || userData!.id,
-        team_id: performanceData.team_id,
-        match_number: performanceData.match_number,
-        slot: performanceData.slot || null,
-        map: performanceData.map,
-        placement: performanceData.placement || null,
-        kills: performanceData.kills || 0,
-        damage: performanceData.damage || 0,
-        survival_time: performanceData.survival_time || 0,
-        assists: performanceData.assists || 0,
-        added_by: userData!.id
+      sanitized.push({
+        player_id: record.player_id,
+        team_id: record.team_id,
+        match_number: record.match_number,
+        slot: record.slot || null,
+        map: record.map,
+        placement: record.placement,
+        kills: record.kills,
+        damage: record.damage,
+        survival_time: record.survival_time,
+        assists: record.assists,
+        added_by: record.added_by
       })
+    }
+
+    // Insert
+    const { data: inserted, error: insertError } = await userSupabase
+      .from('performances')
+      .insert(sanitized)
       .select()
-      .single()
 
     if (insertError) {
-      console.error('Error inserting performance:', insertError)
+      console.error('Error inserting performance(s):', insertError)
       const message = insertError.message || ''
       const migrationHint = message.includes('attendances') && message.includes('date')
         ? 'Attendance trigger mismatch detected. Please apply scripts/15-fix-auto-attendance-trigger.sql to update triggers.'
@@ -294,17 +268,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Auto-create match attendance (Scrims session)
+    // Auto-create attendance for each inserted performance (best-effort)
     try {
-      await createMatchAttendance(userSupabase, newPerformance, userData!)
+      for (const perf of inserted || []) {
+        await createMatchAttendance(userSupabase, perf, userData!)
+      }
     } catch (attendanceError) {
       console.warn('Failed to create match attendance:', attendanceError)
-      // Don't fail the performance submission if attendance creation fails
     }
 
     return NextResponse.json({
       success: true,
-      performance: newPerformance,
+      performance: Array.isArray(payload) ? inserted : inserted?.[0],
       message: 'Performance submitted successfully'
     })
 
@@ -323,7 +298,7 @@ async function createMatchAttendance(userSupabase: any, performance: any, userDa
   const currentDate = new Date().toISOString().split('T')[0]
   
   // Check if session already exists for this match
-  const { data: existingSession, error: sessionCheckError } = await userSupabase
+  const { data: existingSession } = await userSupabase
     .from('sessions')
     .select('id')
     .eq('team_id', performance.team_id)
@@ -337,7 +312,6 @@ async function createMatchAttendance(userSupabase: any, performance: any, userDa
   // Create session if it doesn't exist
   if (!sessionId) {
     const sessionTitle = `Match ${performance.match_number} - ${performance.map}`
-    
     const { data: newSession, error: sessionCreateError } = await userSupabase
       .from('sessions')
       .insert({
@@ -371,14 +345,19 @@ async function createMatchAttendance(userSupabase: any, performance: any, userDa
     .single()
 
   if (!existingAttendance) {
+    // Prefer a valid UUID slot_id if provided in performance.slot
+    const slotId = isUuid(performance.slot) ? performance.slot : null
+
     // Create attendance record with schema-compliant fields
     const attendanceData = {
       player_id: performance.player_id,
       team_id: performance.team_id,
+      date: currentDate,
+      session_time: 'Scrims',
       session_id: sessionId,
       status: 'present',
       source: 'auto',
-      slot_id: performance.slot ?? null,
+      slot_id: slotId,
       created_at: new Date().toISOString()
     }
 
