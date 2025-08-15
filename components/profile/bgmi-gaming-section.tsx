@@ -102,7 +102,7 @@ export function BGMIGamingSection({ profile, isEditing, canEdit, onUpdate }: BGM
         <CardContent className="space-y-4">
           {isEditing ? (
             <>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="bgmi_id">BGMI ID</Label>
                   <Input
@@ -110,6 +110,7 @@ export function BGMIGamingSection({ profile, isEditing, canEdit, onUpdate }: BGM
                     value={localData.bgmi_id}
                     onChange={(e) => setLocalData({ ...localData, bgmi_id: e.target.value })}
                     placeholder="Enter your BGMI ID"
+                    className="min-h-[44px]"
                   />
                 </div>
                 <div className="space-y-2">
@@ -120,6 +121,7 @@ export function BGMIGamingSection({ profile, isEditing, canEdit, onUpdate }: BGM
                     value={localData.bgmi_points}
                     onChange={(e) => setLocalData({ ...localData, bgmi_points: parseInt(e.target.value) || 0 })}
                     placeholder="0"
+                    className="min-h-[44px]"
                   />
                 </div>
               </div>
@@ -143,7 +145,7 @@ export function BGMIGamingSection({ profile, isEditing, canEdit, onUpdate }: BGM
                 </Select>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="preferred_role">Preferred Role</Label>
                   <Input
@@ -151,6 +153,7 @@ export function BGMIGamingSection({ profile, isEditing, canEdit, onUpdate }: BGM
                     value={localData.preferred_role}
                     onChange={(e) => setLocalData({ ...localData, preferred_role: e.target.value })}
                     placeholder="e.g., IGL, Fragger, Support"
+                    className="min-h-[44px]"
                   />
                 </div>
                 <div className="space-y-2">
@@ -160,6 +163,7 @@ export function BGMIGamingSection({ profile, isEditing, canEdit, onUpdate }: BGM
                     value={localData.in_game_role}
                     onChange={(e) => setLocalData({ ...localData, in_game_role: e.target.value })}
                     placeholder="e.g., Entry Fragger"
+                    className="min-h-[44px]"
                   />
                 </div>
               </div>

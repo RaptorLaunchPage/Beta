@@ -54,12 +54,12 @@ export function PublicNavigation() {
         </Link>
         
         {/* Center nav names (desktop) */}
-        <nav className="mx-auto hidden md:flex items-center gap-3 lg:gap-4 overflow-x-auto no-scrollbar px-2">
+        <nav className="mx-auto hidden md:flex items-center gap-3 lg:gap-4 px-2">
           {NAV_ITEMS.map(({ name, href }) => (
             <Link
               key={name}
               href={href}
-              className={`text-xs sm:text-sm text-white/80 hover:text-white transition-colors pb-0.5 border-b-2 cursor-pointer ${
+              className={`text-xs sm:text-sm text-white/80 hover:text-white transition-colors pb-0.5 border-b-2 cursor-pointer min-w-fit ${
                 pathname === href ? "border-white" : "border-transparent hover:border-white/40"
               }`}
               aria-label={`Go to ${name}`}

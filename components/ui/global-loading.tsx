@@ -146,7 +146,7 @@ const GlobalLoading = memo(function GlobalLoading({
 
               {/* Progress Bar */}
               {showProgress && progress !== undefined && (
-                <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-white/20 rounded-full h-2 sm:h-3 overflow-hidden">
                   <div 
                     className={cn(
                       "h-full bg-gradient-to-r transition-all duration-300 ease-out",

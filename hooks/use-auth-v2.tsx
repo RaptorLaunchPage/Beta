@@ -99,6 +99,19 @@ const AuthProviderV2 = memo(function AuthProviderV2({ children }: { children: Re
       }
     })
 
+    // Immediately process existing session in case the SIGNED_IN event was missed
+    ;(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          console.log('🔍 Found existing session on mount, processing it now...')
+          await authFlowV2.handleSupabaseSession(session)
+        }
+      } catch (e) {
+        console.warn('⚠️ Initial session check failed:', e)
+      }
+    })()
+
     return () => {
       subscription.unsubscribe()
     }

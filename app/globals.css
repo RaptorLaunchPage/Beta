@@ -91,6 +91,61 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    /* Prevent horizontal overflow on mobile */
+    overflow-x: hidden;
+  }
+  
+  /* Ensure proper viewport handling on mobile */
+  html {
+    overflow-x: hidden;
+  }
+  
+  /* Improve touch targets on mobile */
+  button, input, select, textarea {
+    min-height: 44px;
+  }
+  
+  /* Better text scaling on mobile */
+  @media (max-width: 640px) {
+    h1 {
+      font-size: 1.5rem;
+      line-height: 2rem;
+    }
+    h2 {
+      font-size: 1.25rem;
+      line-height: 1.75rem;
+    }
+    h3 {
+      font-size: 1.125rem;
+      line-height: 1.75rem;
+    }
+  }
+  
+  /* Safari-specific fixes */
+  @supports (-webkit-touch-callout: none) {
+    /* iOS Safari viewport height fix */
+    .min-h-screen {
+      min-height: -webkit-fill-available;
+    }
+    
+    /* Prevent zoom on input focus */
+    input, select, textarea {
+      font-size: 16px;
+    }
+  }
+  
+  /* Android-specific fixes */
+  @media screen and (max-width: 768px) {
+    /* Improve touch scrolling */
+    * {
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Better viewport handling */
+    body {
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+    }
   }
 }
 

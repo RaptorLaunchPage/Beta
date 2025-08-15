@@ -150,7 +150,7 @@ export function NewDashboardLayout({ children }: NewDashboardLayoutProps) {
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[280px] p-0 bg-white/10 backdrop-blur-md border-white/20">
+              <SheetContent side="left" className="w-[85vw] max-w-[280px] p-0 bg-white/10 backdrop-blur-md border-white/20">
                                   <div className="flex flex-col h-full">
                     {/* Mobile Menu Header */}
                     <div className="p-6 border-b border-white/20 bg-white/20 backdrop-blur-md">
