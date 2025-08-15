@@ -263,18 +263,19 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Create performance
+    // Create performance - use correct database fields
     const performanceData = {
       player_id: finalPlayerId,
       team_id: finalTeamId,
-      match_type: finalMatchType,
+      match_number: finalMatchType === 'tournament' ? 1 : 0, // Map match_type to match_number
       map: finalMap,
       kills: finalKills,
       assists: finalAssists,
       damage: finalDamage,
       survival_time: finalSurvivalTime,
       placement: finalPlacement,
-      slot_id: finalSlotId || null
+      slot_id: finalSlotId || null,
+      added_by: user.id
     }
 
     const { data: performance, error: insertError } = await supabase

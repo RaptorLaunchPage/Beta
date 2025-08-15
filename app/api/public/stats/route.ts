@@ -61,11 +61,13 @@ export async function GET() {
     const totalWWCD = baseWWCD + liveWWCD
 
     return createSuccessResponse({
-      activeTeams,
-      activePlayers,
-      totalMatches,
-      totalWWCD,
-      costCovered
+      stats: {
+        activeTeams,
+        activePlayers,
+        totalMatches,
+        totalWWCD,
+        costCovered
+      }
     })
 
   } catch (error: any) {
