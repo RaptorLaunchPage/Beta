@@ -1,40 +1,36 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+import { 
+  authenticateRequest, 
+  createErrorResponse, 
+  createSuccessResponse, 
+  checkRoleAccess,
+  checkTeamAccess,
+  validateRequiredFields,
+  isValidUuid,
+  isValidDate,
+  handleCors
+} from '@/lib/api-utils'
 
 // GET - Fetch slots with filtering
 export async function GET(request: Request) {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    // Handle CORS
+    const corsResponse = handleCors(request as any)
+    if (corsResponse) return corsResponse
+
+    // Authenticate request
+    const { user, supabase, error: authError } = await authenticateRequest(request as any)
+    if (authError) {
+      return createErrorResponse(authError)
     }
 
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) {
-      return NextResponse.json({ error: 'Authorization token required' }, { status: 401 })
-    }
-
-    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } }
-    })
-
-    const { data: { user }, error: authError } = await userSupabase.auth.getUser(token)
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Get user profile from users table (source of truth)
-    const { data: userData } = await userSupabase
-      .from('users')
-      .select('id, role, team_id, name, email')
-      .eq('id', user.id)
-      .single()
-
-    if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    if (!user || !supabase) {
+      return createErrorResponse({
+        error: 'Authentication failed',
+        code: 'AUTH_FAILED',
+        status: 401
+      })
     }
 
     const url = new URL(request.url)
@@ -43,22 +39,40 @@ export async function GET(request: Request) {
     const teamId = url.searchParams.get('team_id')
     const id = url.searchParams.get('id')
 
-    let query = userSupabase
+    // Validate UUID if provided
+    if (id && !isValidUuid(id)) {
+      return createErrorResponse({
+        error: 'Invalid slot ID format',
+        code: 'INVALID_UUID',
+        status: 400
+      })
+    }
+
+    // Validate team ID if provided
+    if (teamId && !isValidUuid(teamId)) {
+      return createErrorResponse({
+        error: 'Invalid team ID format',
+        code: 'INVALID_UUID',
+        status: 400
+      })
+    }
+
+    let query = supabase
       .from('slots')
       .select('*, team:team_id(name, tier)')
       .order('date', { ascending: false })
 
     // Role-based filtering
-    const userRole = (userData.role || '').toLowerCase()
-    const shouldSeeAllData = ['admin', 'manager'].includes(userRole)
+    const userRole = (user.role || '').toLowerCase()
+    const shouldSeeAllData = checkRoleAccess(userRole, ['admin', 'manager'])
 
     if (!shouldSeeAllData) {
-      if (userRole === 'coach' || userRole === 'player' || userRole === 'analyst') {
-        if (userData.team_id) {
-          query = query.eq('team_id', userData.team_id)
+      if (checkRoleAccess(userRole, ['coach', 'player', 'analyst'])) {
+        if (user.team_id) {
+          query = query.eq('team_id', user.team_id)
         } else {
           // No team assigned: return empty result
-          return NextResponse.json({ slots: [], view: 'current', userRole })
+          return createSuccessResponse([])
         }
       }
     }
@@ -88,6 +102,13 @@ export async function GET(request: Request) {
             break
           case 'archived':
             if (month) {
+              if (!isValidDate(month + '-01')) {
+                return createErrorResponse({
+                  error: 'Invalid month format. Use YYYY-MM',
+                  code: 'INVALID_DATE_FORMAT',
+                  status: 400
+                })
+              }
               const monthDate = new Date(month + '-01')
               const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd')
               const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd')
@@ -110,57 +131,54 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error('Error fetching slots:', error)
-      return NextResponse.json({ error: 'Failed to fetch slots' }, { status: 500 })
+      return createErrorResponse({
+        error: 'Failed to fetch slots',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: error.message
+      })
     }
 
-    return NextResponse.json({ 
-      slots: slots || [],
-      view: userRole === 'player' ? 'current' : (view || 'current'),
-      userRole 
-    })
+    return createSuccessResponse(slots || [])
 
   } catch (error) {
     console.error('Error in slots API:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return createErrorResponse({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      status: 500
+    })
   }
 }
 
 // POST - Create new slot (managers/coaches/admins only)
 export async function POST(request: Request) {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    // Handle CORS
+    const corsResponse = handleCors(request as any)
+    if (corsResponse) return corsResponse
+
+    // Authenticate request
+    const { user, supabase, error: authError } = await authenticateRequest(request as any)
+    if (authError) {
+      return createErrorResponse(authError)
     }
 
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) {
-      return NextResponse.json({ error: 'Authorization token required' }, { status: 401 })
-    }
-
-    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } }
-    })
-
-    const { data: { user }, error: authError } = await userSupabase.auth.getUser(token)
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Get user profile from users table
-    const { data: userData } = await userSupabase
-      .from('users')
-      .select('id, role, team_id, name, email')
-      .eq('id', user.id)
-      .single()
-
-    if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    if (!user || !supabase) {
+      return createErrorResponse({
+        error: 'Authentication failed',
+        code: 'AUTH_FAILED',
+        status: 401
+      })
     }
 
     // Check permissions
-    const userRole = (userData.role || '').toLowerCase()
-    if (!['admin', 'manager', 'coach'].includes(userRole)) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    if (!checkRoleAccess(user.role, ['admin', 'manager', 'coach'])) {
+      return createErrorResponse({
+        error: 'Insufficient permissions',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        status: 403
+      })
     }
 
     const body = await request.json()
@@ -176,21 +194,44 @@ export async function POST(request: Request) {
     } = body
 
     // Validate required fields
-    if (!team_id || !organizer || !time_range || !date) {
-      return NextResponse.json({ 
-        error: 'Missing required fields: team_id, organizer, time_range, date' 
-      }, { status: 400 })
+    const validation = validateRequiredFields(body, ['team_id', 'organizer', 'time_range', 'date'])
+    if (!validation.valid) {
+      return createErrorResponse({
+        error: `Missing required fields: ${validation.missing.join(', ')}`,
+        code: 'MISSING_REQUIRED_FIELDS',
+        status: 400
+      })
+    }
+
+    // Validate UUIDs
+    if (!isValidUuid(team_id)) {
+      return createErrorResponse({
+        error: 'Invalid team ID format',
+        code: 'INVALID_UUID',
+        status: 400
+      })
+    }
+
+    // Validate date
+    if (!isValidDate(date)) {
+      return createErrorResponse({
+        error: 'Invalid date format',
+        code: 'INVALID_DATE',
+        status: 400
+      })
     }
 
     // For coaches, ensure they can only create slots for their team
-    if (userRole === 'coach' && team_id !== userData.team_id) {
-      return NextResponse.json({ 
-        error: 'Coaches can only create slots for their own team' 
-      }, { status: 403 })
+    if (user.role === 'coach' && team_id !== user.team_id) {
+      return createErrorResponse({
+        error: 'Coaches can only create slots for their own team',
+        code: 'TEAM_ACCESS_DENIED',
+        status: 403
+      })
     }
 
     // Create slot
-    const { data: slot, error: slotError } = await userSupabase
+    const { data: slot, error: slotError } = await supabase
       .from('slots')
       .insert({
         team_id,
@@ -207,12 +248,17 @@ export async function POST(request: Request) {
 
     if (slotError) {
       console.error('Error creating slot:', slotError)
-      return NextResponse.json({ error: 'Failed to create slot' }, { status: 500 })
+      return createErrorResponse({
+        error: 'Failed to create slot',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: slotError.message
+      })
     }
 
     // Create corresponding slot expense entry
     if (slot && slot.slot_rate > 0) {
-      const { error: expenseError } = await userSupabase
+      const { error: expenseError } = await supabase
         .from('slot_expenses')
         .insert({
           slot_id: slot.id,
@@ -238,102 +284,123 @@ export async function POST(request: Request) {
         time_range: slot.time_range,
         match_count: slot.match_count || 0,
         slot_rate: slot.slot_rate || 0,
-        created_by_name: userData.name || userData.email || 'Unknown',
-        created_by_id: userData.id
+        created_by_name: user.name || user.email || 'Unknown',
+        created_by_id: user.id
       })
     } catch (discordError) {
       console.warn('Discord notification failed:', discordError)
     }
 
-    return NextResponse.json({ 
-      message: 'Slot created successfully',
-      slot 
-    })
+    return createSuccessResponse(slot, 'Slot created successfully', 201)
 
   } catch (error) {
     console.error('Error in slot creation:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return createErrorResponse({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      status: 500
+    })
   }
 }
 
 // DELETE - Delete slot (managers/coaches/admins only)
 export async function DELETE(request: Request) {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    // Handle CORS
+    const corsResponse = handleCors(request as any)
+    if (corsResponse) return corsResponse
+
+    // Authenticate request
+    const { user, supabase, error: authError } = await authenticateRequest(request as any)
+    if (authError) {
+      return createErrorResponse(authError)
     }
 
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) {
-      return NextResponse.json({ error: 'Authorization token required' }, { status: 401 })
-    }
-
-    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } }
-    })
-
-    const { data: { user }, error: authError } = await userSupabase.auth.getUser(token)
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Get user profile from users table
-    const { data: userData } = await userSupabase
-      .from('users')
-      .select('id, role, team_id')
-      .eq('id', user.id)
-      .single()
-
-    if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    if (!user || !supabase) {
+      return createErrorResponse({
+        error: 'Authentication failed',
+        code: 'AUTH_FAILED',
+        status: 401
+      })
     }
 
     // Check permissions
-    const userRole = (userData.role || '').toLowerCase()
-    if (!['admin', 'manager', 'coach'].includes(userRole)) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    if (!checkRoleAccess(user.role, ['admin', 'manager', 'coach'])) {
+      return createErrorResponse({
+        error: 'Insufficient permissions',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        status: 403
+      })
     }
 
     const url = new URL(request.url)
     const slotId = url.searchParams.get('id')
 
     if (!slotId) {
-      return NextResponse.json({ error: 'Slot ID is required' }, { status: 400 })
+      return createErrorResponse({
+        error: 'Slot ID is required',
+        code: 'MISSING_SLOT_ID',
+        status: 400
+      })
+    }
+
+    // Validate UUID
+    if (!isValidUuid(slotId)) {
+      return createErrorResponse({
+        error: 'Invalid slot ID format',
+        code: 'INVALID_UUID',
+        status: 400
+      })
     }
 
     // Get slot details for permission check
-    const { data: slot } = await userSupabase
+    const { data: slot } = await supabase
       .from('slots')
       .select('team_id')
       .eq('id', slotId)
       .single()
 
     if (!slot) {
-      return NextResponse.json({ error: 'Slot not found' }, { status: 404 })
+      return createErrorResponse({
+        error: 'Slot not found',
+        code: 'SLOT_NOT_FOUND',
+        status: 404
+      })
     }
 
     // For coaches, ensure they can only delete slots for their team
-    if (userRole === 'coach' && slot.team_id !== userData.team_id) {
-      return NextResponse.json({ 
-        error: 'Coaches can only delete slots for their own team' 
-      }, { status: 403 })
+    if (user.role === 'coach' && slot.team_id !== user.team_id) {
+      return createErrorResponse({
+        error: 'Coaches can only delete slots for their own team',
+        code: 'TEAM_ACCESS_DENIED',
+        status: 403
+      })
     }
 
     // Delete slot (cascade will handle slot_expenses)
-    const { error: deleteError } = await userSupabase
+    const { error: deleteError } = await supabase
       .from('slots')
       .delete()
       .eq('id', slotId)
 
     if (deleteError) {
       console.error('Error deleting slot:', deleteError)
-      return NextResponse.json({ error: 'Failed to delete slot' }, { status: 500 })
+      return createErrorResponse({
+        error: 'Failed to delete slot',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: deleteError.message
+      })
     }
 
-    return NextResponse.json({ message: 'Slot deleted successfully' })
+    return createSuccessResponse({ success: true }, 'Slot deleted successfully')
 
   } catch (error) {
     console.error('Error in slot deletion:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return createErrorResponse({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      status: 500
+    })
   }
 }

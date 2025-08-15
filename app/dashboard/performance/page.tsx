@@ -31,7 +31,7 @@ import type { Database } from "@/lib/supabase"
 import { DashboardPermissions, type UserRole } from "@/lib/dashboard-permissions"
 
 type Performance = Database["public"]["Tables"]["performances"]["Row"] & {
-  slot?: {
+  slots?: {
     id: string
     time_range: string
     date: string

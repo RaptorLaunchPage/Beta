@@ -1,30 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import getSupabaseAdmin from '@/lib/supabase-admin'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-async function getCaller(request: NextRequest) {
-  if (!supabaseUrl || !supabaseAnonKey) return { status: 503, error: 'Service unavailable' as const }
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader) return { status: 401, error: 'Authorization required' as const }
-  const token = authHeader.replace('Bearer ', '')
-  const userClient = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: `Bearer ${token}` } } })
-  const { data: { user } } = await userClient.auth.getUser(token)
-  if (!user) return { status: 401, error: 'Invalid token' as const }
-  const { data: profile } = await userClient.from('users').select('id, role').eq('id', user.id).single()
-  if (!profile) return { status: 404, error: 'User not found' as const }
-  if (profile.role !== 'admin') return { status: 403, error: 'Forbidden' as const }
-  return { status: 200 as const, user: profile }
-}
+import { 
+  authenticateRequest, 
+  createErrorResponse, 
+  createSuccessResponse, 
+  handleCors
+} from '@/lib/api-utils'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    const caller = await getCaller(request)
-    if ('error' in caller) return NextResponse.json({ error: caller.error }, { status: caller.status })
+    // Handle CORS
+    const corsResponse = handleCors(request)
+    if (corsResponse) return corsResponse
+
+    // Authenticate request
+    const { user, error: authError } = await authenticateRequest(request)
+    if (authError) {
+      return createErrorResponse(authError)
+    }
+
+    if (!user) {
+      return createErrorResponse({
+        error: 'Authentication failed',
+        code: 'AUTH_FAILED',
+        status: 401
+      })
+    }
+
+    // Check admin permissions
+    if (user.role !== 'admin') {
+      return createErrorResponse({
+        error: 'Forbidden - Admin access required',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        status: 403
+      })
+    }
 
     const supabaseAdmin = getSupabaseAdmin()
     const { data: rows, error: settingsError } = await supabaseAdmin
@@ -32,24 +44,61 @@ export async function GET(request: NextRequest) {
       .select('key, value')
 
     if (settingsError) {
-      return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
+      console.error('Settings fetch error:', settingsError)
+      return createErrorResponse({
+        error: 'Failed to fetch settings',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: settingsError.message
+      })
     }
 
     const settings: Record<string, string> = {}
     for (const r of rows || []) settings[r.key] = r.value
 
-    return NextResponse.json({ settings })
+    return createSuccessResponse({ settings })
+
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Admin settings GET error:', error)
+    return createErrorResponse({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      status: 500
+    })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    // Handle CORS
+    const corsResponse = handleCors(request)
+    if (corsResponse) return corsResponse
+
+    // Authenticate request
+    const { user, error: authError } = await authenticateRequest(request)
+    if (authError) {
+      return createErrorResponse(authError)
+    }
+
+    if (!user) {
+      return createErrorResponse({
+        error: 'Authentication failed',
+        code: 'AUTH_FAILED',
+        status: 401
+      })
+    }
+
+    // Check admin permissions
+    if (user.role !== 'admin') {
+      return createErrorResponse({
+        error: 'Forbidden - Admin access required',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        status: 403
+      })
+    }
+
     const body = await request.json()
     const action = body.action as string | undefined
-    const caller = await getCaller(request)
-    if ('error' in caller) return NextResponse.json({ error: caller.error }, { status: caller.status })
 
     if (action === 'purge_non_admin_data') {
       const supabaseAdmin = getSupabaseAdmin()
@@ -62,17 +111,32 @@ export async function POST(request: NextRequest) {
         'slot_expenses',
         'winnings'
       ]
-      for (const table of tables) {
-        await supabaseAdmin.from(table).delete().neq('id', null)
+      
+      try {
+        for (const table of tables) {
+          await supabaseAdmin.from(table).delete().neq('id', null)
+        }
+        await supabaseAdmin.from('users').delete().neq('role', 'admin')
+        return createSuccessResponse({ success: true }, 'Data purged successfully')
+      } catch (purgeError) {
+        console.error('Data purge error:', purgeError)
+        return createErrorResponse({
+          error: 'Failed to purge data',
+          code: 'PURGE_ERROR',
+          status: 500,
+          details: purgeError instanceof Error ? purgeError.message : 'Unknown error'
+        })
       }
-      await supabaseAdmin.from('users').delete().neq('role', 'admin')
-      return NextResponse.json({ success: true })
     }
 
     // Save admin settings into admin_config
     const input = body.settings as Record<string, string | boolean> | undefined
     if (!input) {
-      return NextResponse.json({ error: 'settings payload required' }, { status: 400 })
+      return createErrorResponse({
+        error: 'settings payload required',
+        code: 'MISSING_REQUIRED_FIELDS',
+        status: 400
+      })
     }
 
     const entries = Object.entries(input).map(([key, value]) => ({ key, value: String(value) }))
@@ -83,10 +147,23 @@ export async function POST(request: NextRequest) {
       .upsert(entries, { onConflict: 'key' })
 
     if (error) {
-      return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 })
+      console.error('Settings save error:', error)
+      return createErrorResponse({
+        error: 'Failed to save settings',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: error.message
+      })
     }
 
-    return NextResponse.json({ success: true })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 }) }
+    return createSuccessResponse({ success: true }, 'Settings saved successfully')
+
+  } catch (error: any) {
+    console.error('Admin settings POST error:', error)
+    return createErrorResponse({
+      error: error.message || 'Internal error',
+      code: 'INTERNAL_ERROR',
+      status: 500
+    })
+  }
 }

@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables during build')
-}
+import { 
+  authenticateRequest, 
+  createErrorResponse, 
+  createSuccessResponse, 
+  handleCors
+} from '@/lib/api-utils'
 
 function getDatesForTimeframe(days: number) {
   const end = new Date()
@@ -15,48 +13,24 @@ function getDatesForTimeframe(days: number) {
   return { start, end }
 }
 
-async function getUserFromRequest(request: NextRequest) {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return { error: 'Service unavailable', status: 503 }
-  }
-
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader) {
-    return { error: 'Authorization header required', status: 401 }
-  }
-
-  const token = authHeader.replace('Bearer ', '')
-  const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: `Bearer ${token}` } }
-  })
-
-  const { data: { user }, error: authError } = await userSupabase.auth.getUser(token)
-  if (authError || !user) {
-    return { error: 'Invalid token', status: 401 }
-  }
-
-  const { data: userData, error: userError } = await userSupabase
-    .from('users')
-    .select('id, role, team_id')
-    .eq('id', user.id)
-    .single()
-
-  if (userError || !userData) {
-    return { error: 'User not found', status: 404 }
-  }
-
-  return { userData, userSupabase }
-}
-
 export async function GET(request: NextRequest) {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    // Handle CORS
+    const corsResponse = handleCors(request)
+    if (corsResponse) return corsResponse
+
+    // Authenticate request
+    const { user, supabase, error: authError } = await authenticateRequest(request)
+    if (authError) {
+      return createErrorResponse(authError)
     }
 
-    const { userData, userSupabase, error, status } = await getUserFromRequest(request)
-    if (error || !userSupabase) {
-      return NextResponse.json({ error: error || 'Service unavailable' }, { status: status || 500 })
+    if (!user || !supabase) {
+      return createErrorResponse({
+        error: 'Authentication failed',
+        code: 'AUTH_FAILED',
+        status: 401
+      })
     }
 
     const { searchParams } = new URL(request.url)
@@ -64,117 +38,157 @@ export async function GET(request: NextRequest) {
     const { start, end } = getDatesForTimeframe(timeframe)
 
     // Build queries with minimal column projections
-    let perfQuery = userSupabase
+    let perfQuery = supabase
       .from('performances')
       .select('kills,damage,survival_time,placement,created_at', { count: 'exact' })
       .gte('created_at', start.toISOString())
       .lte('created_at', end.toISOString())
 
     // Role-based filter for performances
-    if (userData.role === 'player') {
-      if (userData.team_id) {
-        perfQuery = perfQuery.or(`player_id.eq.${userData.id},team_id.eq.${userData.team_id}`)
+    if (user.role === 'player') {
+      if (user.team_id) {
+        perfQuery = perfQuery.or(`player_id.eq.${user.id},team_id.eq.${user.team_id}`)
       } else {
-        perfQuery = perfQuery.eq('player_id', userData.id)
+        perfQuery = perfQuery.eq('player_id', user.id)
       }
-    } else if (['coach', 'analyst'].includes(userData.role) && userData.team_id) {
-      perfQuery = perfQuery.eq('team_id', userData.team_id)
+    } else if (['coach', 'analyst'].includes(user.role) && user.team_id) {
+      perfQuery = perfQuery.eq('team_id', user.team_id)
     }
 
     // Finance queries (minimal columns)
-    let expenseQuery = userSupabase
+    let expenseQuery = supabase
       .from('slot_expenses')
       .select('total, team_id, created_at')
       .gte('created_at', start.toISOString())
       .lte('created_at', end.toISOString())
 
-    let winningsQuery = userSupabase
+    let winningsQuery = supabase
       .from('winnings')
       .select('amount_won, team_id, created_at')
       .gte('created_at', start.toISOString())
       .lte('created_at', end.toISOString())
 
-    if (['coach', 'analyst', 'player'].includes(userData.role) && userData.team_id) {
-      expenseQuery = expenseQuery.eq('team_id', userData.team_id)
-      winningsQuery = winningsQuery.eq('team_id', userData.team_id)
+    if (['coach', 'analyst', 'player'].includes(user.role) && user.team_id) {
+      expenseQuery = expenseQuery.eq('team_id', user.team_id)
+      winningsQuery = winningsQuery.eq('team_id', user.team_id)
     }
 
-    // Admin/manager only queries
-    const teamsQuery = ['admin', 'manager'].includes(userData.role)
-      ? userSupabase.from('teams').select('id').eq('status', 'active')
-      : null
-    const usersQuery = ['admin', 'manager'].includes(userData.role)
-      ? userSupabase.from('users').select('id').neq('role', 'pending_player').neq('role', 'awaiting_approval')
-      : null
-
-    // Attendance query (minimal columns)
-    let attendanceQuery = userSupabase
-      .from('attendances')
-      .select('status, team_id, created_at')
-      .gte('created_at', start.toISOString())
-      .lte('created_at', end.toISOString())
-
-    if (['coach', 'analyst', 'player'].includes(userData.role) && userData.team_id) {
-      attendanceQuery = attendanceQuery.eq('team_id', userData.team_id)
-    }
-
-    // Execute in parallel
-    const [perfRes, expenseRes, winningsRes, teamsRes, usersRes, attendanceRes] = await Promise.all([
+    // Execute all queries in parallel
+    const [perfRes, expenseRes, winningsRes] = await Promise.all([
       perfQuery,
       expenseQuery,
-      winningsQuery,
-      teamsQuery,
-      usersQuery,
-      attendanceQuery
+      winningsQuery
     ])
 
+    // Handle performance data
+    if (perfRes.error) {
+      console.error('Performance query error:', perfRes.error)
+      return createErrorResponse({
+        error: 'Failed to fetch performance data',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: perfRes.error.message
+      })
+    }
+
+    // Handle expense data
+    if (expenseRes.error) {
+      console.error('Expense query error:', expenseRes.error)
+      return createErrorResponse({
+        error: 'Failed to fetch expense data',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: expenseRes.error.message
+      })
+    }
+
+    // Handle winnings data
+    if (winningsRes.error) {
+      console.error('Winnings query error:', winningsRes.error)
+      return createErrorResponse({
+        error: 'Failed to fetch winnings data',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: winningsRes.error.message
+      })
+    }
+
+    // Calculate metrics
     const performances = perfRes.data || []
-    const totalMatches = perfRes.count || performances.length || 0
-    const totalKills = performances.reduce((s: number, p: any) => s + (p.kills || 0), 0)
-    const totalDamage = performances.reduce((s: number, p: any) => s + (p.damage || 0), 0)
-    const totalSurvival = performances.reduce((s: number, p: any) => s + (p.survival_time || 0), 0)
-
-    const today = new Date(); today.setHours(0,0,0,0)
-    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
-    const todayMatches = performances.filter((p: any) => new Date(p.created_at) >= today).length
-    const weekMatches = performances.filter((p: any) => new Date(p.created_at) >= weekAgo).length
-    const placements = performances.map((p: any) => p.placement).filter((p: any) => (p ?? 0) > 0)
-    const avgPlacement = placements.length > 0 ? Math.round(placements.reduce((a: number, b: number) => a + (b || 0), 0) / placements.length) : 0
-
     const expenses = expenseRes.data || []
     const winnings = winningsRes.data || []
-    const totalExpense = expenses.reduce((sum: number, e: any) => sum + (e.total || 0), 0)
-    const totalWinnings = winnings.reduce((sum: number, w: any) => sum + (w.amount_won || 0), 0)
-    const totalProfitLoss = totalWinnings - totalExpense
 
-    const activeTeams = teamsRes && Array.isArray(teamsRes.data) ? teamsRes.data.length : 0
-    const activePlayers = usersRes && Array.isArray(usersRes.data) ? usersRes.data.length : 0
+    const totalMatches = performances.length
+    const totalKills = performances.reduce((sum, p) => sum + (p.kills || 0), 0)
+    const totalDamage = performances.reduce((sum, p) => sum + (p.damage || 0), 0)
+    const totalSurvivalTime = performances.reduce((sum, p) => sum + (p.survival_time || 0), 0)
+    const wins = performances.filter(p => p.placement === 1).length
 
-    const attendanceRows = attendanceRes.data || []
-    const totalSessions = attendanceRows.length
-    const attended = attendanceRows.filter((a: any) => ['present', 'late', 'auto'].includes(a.status)).length
-    const overallAttendanceRate = totalSessions > 0 ? (attended / totalSessions) * 100 : 0
+    const totalExpenses = expenses.reduce((sum, e) => sum + (e.total || 0), 0)
+    const totalWinnings = winnings.reduce((sum, w) => sum + (w.amount_won || 0), 0)
+    const netProfit = totalWinnings - totalExpenses
 
-    return NextResponse.json({
-      success: true,
+    // Calculate averages
+    const avgKills = totalMatches > 0 ? totalKills / totalMatches : 0
+    const avgDamage = totalMatches > 0 ? totalDamage / totalMatches : 0
+    const avgSurvivalTime = totalMatches > 0 ? totalSurvivalTime / totalMatches : 0
+    const winRate = totalMatches > 0 ? (wins / totalMatches) * 100 : 0
+
+    // Performance trends (last 7 days vs previous 7 days)
+    const last7Days = performances.filter(p => {
+      const date = new Date(p.created_at)
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      return date >= sevenDaysAgo
+    })
+
+    const previous7Days = performances.filter(p => {
+      const date = new Date(p.created_at)
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      const fourteenDaysAgo = new Date()
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
+      return date >= fourteenDaysAgo && date < sevenDaysAgo
+    })
+
+    const last7AvgKills = last7Days.length > 0 ? last7Days.reduce((sum, p) => sum + (p.kills || 0), 0) / last7Days.length : 0
+    const prev7AvgKills = previous7Days.length > 0 ? previous7Days.reduce((sum, p) => sum + (p.kills || 0), 0) / previous7Days.length : 0
+    const killsTrend = prev7AvgKills > 0 ? ((last7AvgKills - prev7AvgKills) / prev7AvgKills) * 100 : 0
+
+    return createSuccessResponse({
       stats: {
-        totalMatches,
-        totalKills,
-        avgDamage: totalMatches ? totalDamage / totalMatches : 0,
-        avgSurvival: totalMatches ? totalSurvival / totalMatches : 0,
-        kdRatio: totalMatches ? totalKills / totalMatches : 0,
-        avgPlacement,
-        todayMatches,
-        weekMatches,
-        totalExpense,
-        totalProfitLoss,
-        activeTeams,
-        activePlayers,
-        overallAttendanceRate
+        timeframe,
+        metrics: {
+          totalMatches,
+          totalKills,
+          totalDamage,
+          totalSurvivalTime,
+          wins,
+          avgKills: Math.round(avgKills * 100) / 100,
+          avgDamage: Math.round(avgDamage),
+          avgSurvivalTime: Math.round(avgSurvivalTime * 100) / 100,
+          winRate: Math.round(winRate * 100) / 100
+        },
+        financial: {
+          totalExpenses,
+          totalWinnings,
+          netProfit
+        },
+        trends: {
+          killsTrend: Math.round(killsTrend * 100) / 100,
+          last7DaysMatches: last7Days.length,
+          previous7DaysMatches: previous7Days.length
+        },
+        userRole: user.role
       }
     })
-  } catch (error: any) {
-    console.error('Error in dashboard overview API:', error)
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
+
+  } catch (error) {
+    console.error('Dashboard overview error:', error)
+    return createErrorResponse({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      status: 500
+    })
   }
 }

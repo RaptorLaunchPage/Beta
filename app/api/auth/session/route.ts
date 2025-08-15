@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createErrorResponse, createSuccessResponse } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,12 +8,16 @@ export async function GET(request: NextRequest) {
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
     if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+      return createErrorResponse({
+        error: 'Service unavailable',
+        code: 'SERVICE_UNAVAILABLE',
+        status: 503
+      })
     }
 
     const authHeader = request.headers.get('authorization')
     if (!authHeader) {
-      return NextResponse.json({ session: null })
+      return createSuccessResponse({ session: null })
     }
 
     const token = authHeader.replace('Bearer ', '')
@@ -25,14 +30,24 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { session }, error } = await supabase.auth.getSession()
     
-    return NextResponse.json({ 
+    if (error) {
+      console.error('Session error:', error)
+      return createErrorResponse({
+        error: 'Failed to get session',
+        code: 'SESSION_ERROR',
+        status: 500,
+        details: error.message
+      })
+    }
+    
+    return createSuccessResponse({ 
       session: session || { access_token: token }
     })
 
   } catch (error) {
     console.error('Session error:', error)
-    return NextResponse.json({ session: null })
+    return createSuccessResponse({ session: null })
   }
 }
