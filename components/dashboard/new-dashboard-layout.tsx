@@ -68,10 +68,6 @@ export function NewDashboardLayout({ children }: NewDashboardLayoutProps) {
   }
 
   if (!profile) {
-    // If profile is missing (likely signed out), redirect to homepage and render nothing to avoid flicker
-    if (typeof window !== 'undefined') {
-      router.replace('/');
-    }
     return null
   }
 

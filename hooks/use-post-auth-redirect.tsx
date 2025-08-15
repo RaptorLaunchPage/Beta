@@ -81,7 +81,7 @@ export function usePostAuthRedirect(options: UsePostAuthRedirectOptions = {}) {
 
     // For homepage (likely Discord OAuth landing), redirect immediately
     const isHomepageRedirect = pathname === '/'
-    const actualDelay = isHomepageRedirect ? 50 : redirectDelay
+    const actualDelay = Math.min(redirectDelay, isHomepageRedirect ? 50 : 100)
 
     console.log(`⚡ Executing post-auth redirect to: ${targetPath} (delay: ${actualDelay}ms)`) 
 

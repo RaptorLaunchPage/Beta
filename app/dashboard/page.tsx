@@ -180,7 +180,7 @@ export default function OptimizedDashboardPage() {
   }, [userRole])
 
   useEffect(() => {
-    if (profile) {
+    if (profile?.id) {
       loadDashboardData()
       // Defer preload to after paint
       requestAnimationFrame(() => {
@@ -189,7 +189,7 @@ export default function OptimizedDashboardPage() {
         }, 0)
       })
     }
-  }, [profile, selectedTimeframe])
+  }, [profile?.id, profile?.role, selectedTimeframe])
 
   // Refresh cache stats periodically
   useEffect(() => {
