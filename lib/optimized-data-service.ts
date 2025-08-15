@@ -16,8 +16,8 @@ type Winning = Database['public']['Tables']['winnings']['Row']
 interface BatchRequest {
   key: string
   resolver: () => Promise<any>
-  resolve: (value: any) => void
-  reject: (error: any) => void
+  resolve: (value: unknown) => void
+  reject: (error: Error) => void
 }
 
 async function getToken(): Promise<string | null> {
@@ -257,7 +257,10 @@ class OptimizedDataService {
       if (!grouped.has(baseKey)) {
         grouped.set(baseKey, [])
       }
-      grouped.get(baseKey)!.push(request)
+      const group = grouped.get(baseKey)
+      if (group) {
+        group.push(request)
+      }
     })
 
     grouped.forEach(async (requests) => {
@@ -268,12 +271,13 @@ class OptimizedDataService {
               const result = await request.resolver()
               request.resolve(result)
             } catch (error) {
-              request.reject(error)
+              request.reject(error instanceof Error ? error : new Error(String(error)))
             }
           })
         )
       } catch (error) {
-        requests.forEach(req => req.reject(error))
+        const errorObj = error instanceof Error ? error : new Error(String(error))
+        requests.forEach(req => req.reject(errorObj))
       }
     })
   }
@@ -290,27 +294,31 @@ class OptimizedDataService {
     const totalDamage = performances.reduce((sum, p) => sum + (p.damage || 0), 0)
     const totalSurvival = performances.reduce((sum, p) => sum + (p.survival_time || 0), 0)
     
-    const totalExpenses = (expenses as any[]).reduce((sum, e) => sum + (e.total || 0), 0)
-    const totalWinnings = (winnings as any[]).reduce((sum, w) => sum + (w.amount_won || 0), 0)
+    const totalExpenses = expenses.reduce((sum, e) => sum + ((e as { total?: number }).total || 0), 0)
+    const totalWinnings = winnings.reduce((sum, w) => sum + ((w as { amount_won?: number }).amount_won || 0), 0)
     
-    const activeTeams = teams.filter(t => (t as any).status === 'active').length
-    const activePlayers = users.filter(u => (u as any).role === 'player' && ((u as any).status === 'active' || (u as any).status === 'Active' || (u as any).status === null || (u as any).status === '')).length
+    const activeTeams = teams.filter(t => (t as { status?: string }).status === 'active').length
+    const activePlayers = users.filter(u => {
+      const user = u as { role?: string; status?: string | null }
+      return user.role === 'player' && 
+        (user.status === 'active' || user.status === 'Active' || user.status === null || user.status === '')
+    }).length
 
     const today = new Date()
     const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
     
     const todayMatches = performances.filter(p => {
-      const perfDate = new Date((p as any).created_at)
+      const perfDate = new Date((p as { created_at?: string }).created_at || new Date())
       return perfDate.toDateString() === today.toDateString()
     }).length
 
     const weekMatches = performances.filter(p => {
-      const perfDate = new Date((p as any).created_at)
+      const perfDate = new Date((p as { created_at?: string }).created_at || new Date())
       return perfDate >= weekAgo
     }).length
 
     const avgPlacement = totalMatches > 0 
-      ? performances.reduce((sum, p) => sum + ((p as any).placement || 0), 0) / totalMatches 
+      ? performances.reduce((sum, p) => sum + ((p as { placement?: number }).placement || 0), 0) / totalMatches 
       : 0
 
     return {
@@ -329,7 +337,7 @@ class OptimizedDataService {
     }
   }
 
-  async preloadEssentialData(userId: string, userRole: string) {
+  preloadEssentialData(userId: string, userRole: string) {
     console.log('🚀 Preloading essential data...')
     const preloadPromises = [
       this.getTeams(),
@@ -337,8 +345,15 @@ class OptimizedDataService {
       this.getUsers(),
       this.getPerformances({ days: 7 })
     ]
-    Promise.allSettled(preloadPromises).then(() => {
-      console.log('✅ Essential data preloaded')
+    Promise.allSettled(preloadPromises).then((results) => {
+      const failedCount = results.filter(result => result.status === 'rejected').length
+      if (failedCount > 0) {
+        console.warn(`⚠️ Essential data preloaded with ${failedCount} failures`)
+      } else {
+        console.log('✅ Essential data preloaded successfully')
+      }
+    }).catch((error) => {
+      console.error('❌ Essential data preload failed:', error)
     })
   }
 

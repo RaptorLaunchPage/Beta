@@ -41,17 +41,24 @@ export async function GET(request: NextRequest) {
       const role = item.key.replace('agreement_content_', '')
       try {
         acc[role] = JSON.parse(item.value)
-      } catch (e) {
+      } catch (e: unknown) {
         // If parsing fails, create default structure
         acc[role] = {
           role,
           current_version: CURRENT_AGREEMENT_VERSIONS[role as keyof typeof CURRENT_AGREEMENT_VERSIONS] || 1,
           title: `${role.charAt(0).toUpperCase() + role.slice(1)} Agreement`,
-          content: 'Agreement content not set.'
+          content: 'Agreement content not set.',
+          lastUpdated: new Date().toISOString()
         }
       }
       return acc
-    }, {} as Record<string, any>)
+    }, {} as Record<string, { 
+      role: string; 
+      content: string; 
+      lastUpdated: string;
+      current_version?: number;
+      title?: string;
+    }>)
 
     // Ensure all roles have entries
     Object.keys(CURRENT_AGREEMENT_VERSIONS).forEach(role => {
@@ -61,7 +68,7 @@ export async function GET(request: NextRequest) {
           current_version: CURRENT_AGREEMENT_VERSIONS[role as keyof typeof CURRENT_AGREEMENT_VERSIONS],
           title: `${role.charAt(0).toUpperCase() + role.slice(1)} Agreement v${CURRENT_AGREEMENT_VERSIONS[role as keyof typeof CURRENT_AGREEMENT_VERSIONS]}.0`,
           content: `# ${role.charAt(0).toUpperCase() + role.slice(1)} Agreement\n\nPlease define the agreement content for this role.`,
-          last_updated: new Date().toISOString()
+          lastUpdated: new Date().toISOString()
         }
       }
     })

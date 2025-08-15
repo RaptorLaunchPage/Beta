@@ -466,7 +466,7 @@ function DashboardWidgetCard({ widget, stats }: { widget: DashboardWidget; stats
               variant="ghost"
               size="sm"
               className="w-full mt-3 text-white/70 hover:text-white hover:bg-white/10"
-              onClick={() => window.location.href = widget.action!.href}
+              onClick={() => widget.action?.href && (window.location.href = widget.action.href)}
             >
               {widget.action.label}
               <ArrowRight className="h-3 w-3 ml-2" />
@@ -507,7 +507,7 @@ function RoleSpecificAlerts({ userRole, profile }: { userRole: UserRole; profile
                       variant="ghost"
                       size="sm"
                       className={`mt-2 text-${alert.type}-200 hover:text-${alert.type}-100 hover:bg-${alert.type}-800/30`}
-                      onClick={() => window.location.href = alert.action!.href}
+                      onClick={() => alert.action?.href && (window.location.href = alert.action.href)}
                     >
                       {alert.action.label}
                     </Button>

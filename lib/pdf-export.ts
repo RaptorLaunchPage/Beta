@@ -142,7 +142,7 @@ export class PDFExporter {
 
     // Convert data to table format
     const tableData = data.map(row => 
-      headers!.map(header => {
+      headers?.map(header => {
         const value = row[header]
         return typeof value === 'number' ? value.toFixed(1) : String(value || '')
       })

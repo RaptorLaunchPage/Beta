@@ -462,10 +462,7 @@ export default function FAQPage() {
     if (!allIds.includes(id)) return
 
     setOpenValues(prev => {
-      if (ALLOW_MULTIPLE_OPEN) {
-        return Array.from(new Set([id, ...prev]))
-      }
-        return [id]
+      return Array.from(new Set([id, ...prev]))
     })
 
     // Delay to allow expansion animation, then smooth scroll
@@ -544,13 +541,11 @@ export default function FAQPage() {
                   <div key={section.category}>
                     <h2 className="text-2xl font-bold text-white mb-3">{section.category}</h2>
                     <Accordion
-                      type={ALLOW_MULTIPLE_OPEN ? "multiple" : "single"}
+                      type="multiple"
                       value={openValues}
                       onValueChange={(val) => {
-                        const next = Array.isArray(val) ? val : (val ? [val] : [])
-                        setOpenValues(next)
+                        setOpenValues(val)
                       }}
-                      collapsible
                       className="rounded-md bg-white/5 backdrop-blur-md border border-white/10"
                     >
                       {section.items.map((item) => (

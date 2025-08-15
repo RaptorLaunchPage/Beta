@@ -184,7 +184,7 @@ export default function OptimizedDashboardPage() {
       loadDashboardData()
       // Defer preload to after first paint to avoid competing with initial load
       setTimeout(() => {
-        dataService.preloadEssentialData(profile!.id, profile!.role)
+        profile && dataService.preloadEssentialData(profile.id, profile.role)
       }, 0)
     }
   }, [profile, selectedTimeframe])
@@ -352,7 +352,7 @@ export default function OptimizedDashboardPage() {
       const [overviewRes, recentPerfRes, teams, users, perfForTop] = await Promise.all([
         fetch(`/api/dashboard/overview?${params.toString()}`, { headers }),
         fetch(`/api/performances?${perfParams.toString()}`, { headers }),
-        dataService.getTeams(userRole, profile.id),
+        dataService.getTeams(),
         dataService.getUsers(),
         dataService.getPerformances({
           days: parseInt(selectedTimeframe),
@@ -480,7 +480,7 @@ export default function OptimizedDashboardPage() {
 
   const calculateTopPerformers = async () => {
     try {
-      const teams = await dataService.getTeams(userRole, profile?.id)
+      const teams = await dataService.getTeams()
       const users = await dataService.getUsers()
       const performances = await dataService.getPerformances({ 
         days: parseInt(selectedTimeframe),

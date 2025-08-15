@@ -12,12 +12,12 @@ const nextConfig = {
   poweredByHeader: false,
   generateEtags: false,
   compress: true,
-  // Relax build-time checks to prevent non-critical warnings from failing CI builds
+  // More selective build-time checks to catch critical errors while allowing warnings
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false, // Enable ESLint checks during build
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false, // Enable TypeScript checks during build
   },
   // Disable static optimization for API routes during build
   experimental: {

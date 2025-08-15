@@ -79,7 +79,7 @@ export default function AgreementReviewPage() {
     if (user && profile?.role) {
       loadAgreementContent()
     }
-  }, [user, profile?.role, toast])
+  }, [user, profile?.role, toast, getToken])
 
   // Handle scroll to track if user has read to the bottom
   useEffect(() => {
@@ -317,7 +317,7 @@ export default function AgreementReviewPage() {
                     }}
                     className={`text-xs ${getButtonStyle('ghost')}`}
                   >
-                    I've read it
+                    I&apos;ve read it
                   </Button>
                 </div>
               </div>

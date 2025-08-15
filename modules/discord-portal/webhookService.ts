@@ -15,7 +15,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables during build')
+  if (process.env.NODE_ENV === 'production' && !process.env.BUILD_TIME) {
+    throw new Error('Missing Supabase environment variables in production')
+  } else {
+    console.warn('Missing Supabase environment variables during build')
+  }
 }
 
 const supabase = supabaseUrl && supabaseAnonKey 
@@ -27,7 +31,9 @@ const supabase = supabaseUrl && supabaseAnonKey
  */
 function ensureSupabase() {
   if (!supabase) {
-    throw new Error('Supabase client not available - missing environment variables')
+    const message = 'Supabase client not available - missing environment variables'
+    console.error(message)
+    throw new Error(message)
   }
   return supabase
 }

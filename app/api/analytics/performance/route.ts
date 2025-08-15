@@ -119,30 +119,33 @@ export async function GET(request: NextRequest) {
     }
 
     // Process data based on analysis type
-    let analyticsData: any = {}
+    let analyticsData: Record<string, unknown> = {}
+
+    // Cast performances to the correct type
+    const typedPerformances = (performances || []) as PerformanceData[]
 
     switch (analysisType) {
       case 'trends':
-        analyticsData = generateTrendAnalysis(performances || [])
+        analyticsData = generateTrendAnalysis(typedPerformances)
         break
       case 'comparison':
-        analyticsData = generateComparisonAnalysis(performances || [])
+        analyticsData = generateComparisonAnalysis(typedPerformances)
         break
       case 'player':
-        analyticsData = generatePlayerAnalysis(performances || [], playerId || undefined)
+        analyticsData = generatePlayerAnalysis(typedPerformances, playerId || undefined)
         break
       case 'team':
-        analyticsData = generateTeamAnalysis(performances || [])
+        analyticsData = generateTeamAnalysis(typedPerformances)
         break
       case 'maps':
-        analyticsData = generateMapAnalysis(performances || [])
+        analyticsData = generateMapAnalysis(typedPerformances)
         break
       default:
-        analyticsData = generateOverviewAnalysis(performances || [])
+        analyticsData = generateOverviewAnalysis(typedPerformances)
     }
 
     // Curated insights based on filtered dataset
-    analyticsData.insights = generateInsights(performances || [], analysisType)
+    analyticsData.insights = generateInsights(typedPerformances, analysisType)
 
     return NextResponse.json({
       success: true,
@@ -155,21 +158,44 @@ export async function GET(request: NextRequest) {
       }
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in performance analytics API:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: `Analytics error: ${error.message}` },
+      { error: `Analytics error: ${errorMessage}` },
       { status: 500 }
     )
   }
 }
 
+// Define performance data type that matches Supabase response
+interface PerformanceData {
+  kills?: number | null;
+  assists?: number | null;
+  damage?: number | null;
+  placement?: number | null;
+  survival_time?: number | null;
+  created_at?: string | null;
+  player_id?: string | null;
+  team_id?: string | null;
+  map?: string | null;
+  teams?: {
+    id?: string;
+    name?: string;
+  } | null;
+  users?: {
+    id?: string;
+    name?: string;
+    email?: string;
+  } | null;
+}
+
 // Generate trend analysis data
-function generateTrendAnalysis(performances: any[]) {
+function generateTrendAnalysis(performances: PerformanceData[]) {
   const groupedByDate = new Map()
   
   performances.forEach(perf => {
-    const date = new Date(perf.created_at).toLocaleDateString()
+    const date = new Date(perf.created_at || new Date()).toLocaleDateString()
     if (!groupedByDate.has(date)) {
       groupedByDate.set(date, {
         date,
@@ -211,7 +237,7 @@ function generateTrendAnalysis(performances: any[]) {
 }
 
 // Generate team comparison analysis
-function generateComparisonAnalysis(performances: any[]) {
+function generateComparisonAnalysis(performances: PerformanceData[]) {
   const teamStats = new Map()
   
   performances.forEach(perf => {
@@ -262,7 +288,7 @@ function generateComparisonAnalysis(performances: any[]) {
 }
 
 // Generate player-specific analysis
-function generatePlayerAnalysis(performances: any[], playerId?: string) {
+function generatePlayerAnalysis(performances: PerformanceData[], playerId?: string) {
   const playerPerfs = playerId ? 
     performances.filter(p => p.player_id === playerId) : 
     performances
@@ -309,7 +335,7 @@ function generatePlayerAnalysis(performances: any[], playerId?: string) {
 }
 
 // Generate team analysis
-function generateTeamAnalysis(performances: any[]) {
+function generateTeamAnalysis(performances: PerformanceData[]) {
   const mapPerformance = new Map()
   
   performances.forEach(perf => {
@@ -349,12 +375,12 @@ function generateTeamAnalysis(performances: any[]) {
 }
 
 // Generate map analysis
-function generateMapAnalysis(performances: any[]) {
+function generateMapAnalysis(performances: PerformanceData[]) {
   return generateTeamAnalysis(performances) // Same logic for now
 }
 
 // Generate overview analysis
-function generateOverviewAnalysis(performances: any[]) {
+function generateOverviewAnalysis(performances: PerformanceData[]) {
   if (performances.length === 0) {
     return {
       overview: { totalMatches: 0, totalKills: 0, avgDamage: 0, winRate: '0' },
@@ -413,7 +439,14 @@ function generateOverviewAnalysis(performances: any[]) {
 }
 
 // Helper functions
-function calculateImprovements(trendData: any[]) {
+function calculateImprovements(trendData: Array<{ 
+  date: string; 
+  matches: number; 
+  avgKills: string; 
+  avgDamage: number; 
+  avgSurvival: string; 
+  avgPlacement: string; 
+}>) {
   if (trendData.length < 2) return { kills: 0, damage: 0, placement: 0 }
   
   const recent = trendData.slice(-3)
@@ -429,7 +462,7 @@ function calculateImprovements(trendData: any[]) {
   }
 }
 
-function calculateConsistency(performances: any[]) {
+function calculateConsistency(performances: PerformanceData[]) {
   if (performances.length < 2) return 50
   
   const kills = performances.map(p => p.kills || 0)
@@ -441,7 +474,7 @@ function calculateConsistency(performances: any[]) {
   return Math.max(0, 100 - (stdDev / Math.max(avg, 1e-6) * 100))
 }
 
-function generatePlayerTrend(performances: any[]) {
+function generatePlayerTrend(performances: PerformanceData[]) {
   return performances.slice(0, 10).reverse().map((perf, index) => ({
     match: index + 1,
     kills: perf.kills || 0,
@@ -451,7 +484,7 @@ function generatePlayerTrend(performances: any[]) {
 }
 
 // Generate curated insights based on the filtered dataset
-function generateInsights(performances: any[], analysisType: string) {
+function generateInsights(performances: PerformanceData[], _analysisType: string) {
   const insights: Array<{ title: string; description: string; category: string }> = []
   if (!performances || performances.length === 0) return insights
 

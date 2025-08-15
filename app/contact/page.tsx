@@ -204,7 +204,7 @@ export default function ContactPage() {
 
         <section className="max-w-5xl mx-auto px-4 py-10">
           {submitted ? (
-            <FadeInOnScroll id="contact-confirm">
+            <FadeInOnScroll>
               <Card className="bg-black/60 backdrop-blur-md border-white/20 text-white">
                 <CardContent className="p-8 text-center">
                   <CheckCircle2 className="h-10 w-10 text-green-400 mx-auto mb-3" />

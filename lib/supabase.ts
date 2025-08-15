@@ -12,14 +12,22 @@ let finalKey: string
  * More graceful handling of missing env vars to prevent 500 errors
  */
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error(
-    "⚠️ Supabase credentials are missing.\n" +
+  if (process.env.NODE_ENV === 'production' && !process.env.BUILD_TIME) {
+    throw new Error(
+      "Missing required Supabase credentials in production. " +
       "Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY " +
-      "in your environment variables."
-  )
-  // Use dummy values to prevent crashes - auth will fail gracefully
-  finalUrl = 'https://dummy.supabase.co'
-  finalKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1bW15IiwiZXhwIjoxOTg0MTgwODAwfQ.dummy'
+      "environment variables."
+    )
+  } else {
+    console.warn(
+      "⚠️ Supabase credentials are missing.\n" +
+        "Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY " +
+        "in your environment variables."
+    )
+    // Use dummy values to prevent crashes during build or development
+    finalUrl = 'https://dummy.supabase.co'
+    finalKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1bW15IiwiZXhwIjoxOTg0MTgwODAwfQ.dummy'
+  }
 } else {
   // Validate URL format to prevent runtime crashes
   try {
@@ -27,8 +35,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
     finalUrl = supabaseUrl
   } catch (error) {
     console.error('Invalid Supabase URL:', supabaseUrl)
-    // Use a dummy URL that won't crash the client but will fail gracefully
-    finalUrl = 'https://dummy.supabase.co'
+    throw new Error(`Invalid Supabase URL format: ${supabaseUrl}`)
   }
   finalKey = supabaseAnonKey
 }

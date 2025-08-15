@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUser } from '@/lib/auth-utils'
-import { CURRENT_AGREEMENT_VERSIONS, getRequiredAgreementVersion } from '@/lib/agreement-versions'
+import { getRequiredAgreementVersion } from '@/lib/agreement-versions'
 import { createClient } from '@supabase/supabase-js'
 
 // Force dynamic rendering
