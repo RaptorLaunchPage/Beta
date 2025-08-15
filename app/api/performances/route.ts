@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     // Try a simplified query first without relationships
     let query = supabase
       .from("performances")
-      .select("*, users:player_id(id, name, email), teams:team_id(id, name, tier)", { count: 'exact' })
+      .select("*, users:player_id(id, name, email), teams:team_id(id, name, tier), slots:slot_id(id, time_range, date)", { count: 'exact' })
 
     const { searchParams } = new URL(request.url)
     const timeframe = parseInt(searchParams.get('timeframe') || '0')
