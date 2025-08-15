@@ -128,8 +128,25 @@ export default function DebugPage() {
       addLog('info', 'Slots data', slotsData)
 
       if (Array.isArray(slotsData) && slotsData.length > 0) {
-        setTestPerformance(prev => ({ ...prev, slot: slotsData[0].id }))
+        const selectedSlotId = slotsData[0].id
+        setTestPerformance(prev => ({ ...prev, slot: selectedSlotId }))
         addLog('info', 'Using first available slot', slotsData[0])
+        
+        // Step 3: Test performance creation
+        addLog('info', 'Step 3: Testing performance creation')
+        const payload = {
+          player_id: profile?.id,
+          team_id: profile?.team_id,
+          match_number: parseInt(testPerformance.match_number),
+          slot: selectedSlotId,
+          map: testPerformance.map,
+          placement: parseInt(testPerformance.placement),
+          kills: parseInt(testPerformance.kills),
+          assists: parseInt(testPerformance.assists),
+          damage: parseInt(testPerformance.damage),
+          survival_time: parseInt(testPerformance.survival_time),
+          added_by: profile?.id
+        }
       } else {
         addLog('warning', 'No slots available, creating test slot')
         // Create a test slot
@@ -150,28 +167,32 @@ export default function DebugPage() {
         })
         const slotData = await createSlotRes.json()
         if (createSlotRes.ok) {
-          setTestPerformance(prev => ({ ...prev, slot: slotData.id }))
+          const selectedSlotId = slotData.id
+          setTestPerformance(prev => ({ ...prev, slot: selectedSlotId }))
           addLog('success', 'Test slot created', slotData)
+          
+          // Step 3: Test performance creation
+          addLog('info', 'Step 3: Testing performance creation')
+          const payload = {
+            player_id: profile?.id,
+            team_id: profile?.team_id,
+            match_number: parseInt(testPerformance.match_number),
+            slot: selectedSlotId,
+            map: testPerformance.map,
+            placement: parseInt(testPerformance.placement),
+            kills: parseInt(testPerformance.kills),
+            assists: parseInt(testPerformance.assists),
+            damage: parseInt(testPerformance.damage),
+            survival_time: parseInt(testPerformance.survival_time),
+            added_by: profile?.id
+          }
         } else {
           addLog('error', 'Failed to create test slot', slotData)
+          setTestResults(prev => ({ ...prev, performance: { success: false, error: 'Failed to create test slot' } }))
+          return
         }
       }
-
-      // Step 3: Test performance creation
-      addLog('info', 'Step 3: Testing performance creation')
-      const payload = {
-        player_id: profile?.id,
-        team_id: profile?.team_id,
-        match_number: parseInt(testPerformance.match_number),
-        slot: testPerformance.slot,
-        map: testPerformance.map,
-        placement: parseInt(testPerformance.placement),
-        kills: parseInt(testPerformance.kills),
-        assists: parseInt(testPerformance.assists),
-        damage: parseInt(testPerformance.damage),
-        survival_time: parseInt(testPerformance.survival_time),
-        added_by: profile?.id
-      }
+      
       addLog('info', 'Performance payload', payload)
 
       const perfRes = await fetch('/api/performances', {
@@ -228,26 +249,27 @@ export default function DebugPage() {
       addLog('info', 'Teams data', teamsData)
 
       if (Array.isArray(teamsData) && teamsData.length > 0) {
-        setTestSession(prev => ({ ...prev, team_id: teamsData[0].id }))
+        const selectedTeamId = teamsData[0].id
+        setTestSession(prev => ({ ...prev, team_id: selectedTeamId }))
         addLog('info', 'Using first available team', teamsData[0])
+        
+        // Step 3: Test session creation
+        addLog('info', 'Step 3: Testing session creation')
+        const payload = {
+          team_id: selectedTeamId,
+          session_type: testSession.session_type,
+          session_subtype: testSession.session_subtype,
+          date: testSession.date,
+          start_time: testSession.start_time,
+          end_time: testSession.end_time,
+          title: testSession.title,
+          description: testSession.description,
+          is_mandatory: true
+        }
       } else {
         addLog('warning', 'No teams available')
         setTestResults(prev => ({ ...prev, session: { success: false, error: 'No teams available' } }))
         return
-      }
-
-      // Step 3: Test session creation
-      addLog('info', 'Step 3: Testing session creation')
-      const payload = {
-        team_id: testSession.team_id,
-        session_type: testSession.session_type,
-        session_subtype: testSession.session_subtype,
-        date: testSession.date,
-        start_time: testSession.start_time,
-        end_time: testSession.end_time,
-        title: testSession.title,
-        description: testSession.description,
-        is_mandatory: true
       }
       addLog('info', 'Session payload', payload)
 
