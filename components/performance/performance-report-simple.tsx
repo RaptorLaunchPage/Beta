@@ -64,7 +64,7 @@ export function PerformanceReportSimple() {
           // Calculate statistics
           if (performancesData && performancesData.length > 0) {
             const totalPerformances = performancesData.length
-            const recentPerformances = performancesData.filter(p => {
+            const recentPerformances = performancesData.filter((p: any) => {
               const createdDate = new Date(p.created_at)
               const weekAgo = new Date()
               weekAgo.setDate(weekAgo.getDate() - 7)
@@ -72,13 +72,13 @@ export function PerformanceReportSimple() {
             })
             
             // Calculate team distribution
-            const teamDistribution = performancesData.reduce((acc, perf) => {
+            const teamDistribution = performancesData.reduce((acc: Record<string, number>, perf: any) => {
               acc[perf.team_id] = (acc[perf.team_id] || 0) + 1
               return acc
             }, {} as Record<string, number>)
             
             // Calculate player distribution
-            const playerDistribution = performancesData.reduce((acc, perf) => {
+            const playerDistribution = performancesData.reduce((acc: Record<string, number>, perf: any) => {
               acc[perf.player_id] = (acc[perf.player_id] || 0) + 1
               return acc
             }, {} as Record<string, number>)

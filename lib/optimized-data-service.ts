@@ -271,12 +271,13 @@ class OptimizedDataService {
               const result = await request.resolver()
               request.resolve(result)
             } catch (error) {
-              request.reject(error)
+              request.reject(error instanceof Error ? error : new Error(String(error)))
             }
           })
         )
       } catch (error) {
-        requests.forEach(req => req.reject(error))
+        const errorObj = error instanceof Error ? error : new Error(String(error))
+        requests.forEach(req => req.reject(errorObj))
       }
     })
   }

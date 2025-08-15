@@ -55,6 +55,10 @@ export class SecureProfileCreation {
         tier?: string;
         team_id?: string;
         avatar_url?: string;
+        role_level?: number;
+        onboarding_completed?: boolean;
+        created_at?: string;
+        provider?: string;
       } = {
         id: userId, // This now references an existing auth.users.id
         email: email,

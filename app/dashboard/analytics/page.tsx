@@ -120,7 +120,7 @@ export default function AnalyticsPage() {
       setTeams(Array.isArray(teamsData) ? teamsData : [])
 
       // Build maps from performances locally
-      const uniqueMaps = [...new Set((performances || []).map((p: any) => p.map).filter(Boolean))]
+      const uniqueMaps = [...new Set((performances || []).map((p: any) => p.map).filter(Boolean))] as string[]
       setMaps(uniqueMaps)
 
       // Calculate analytics stats

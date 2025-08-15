@@ -25,7 +25,7 @@ export class OCRService {
 
     // Set progress callback
     worker.setParameters({
-      logger: (m: string | { message: string }) => {
+      logger: (m: any) => {
         if (m.status === "recognizing text") {
           const progress = Math.round((m.progress ?? 0) * 100)
           console.log(`[Tesseract] progress ${progress}%`)

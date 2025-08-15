@@ -121,28 +121,31 @@ export async function GET(request: NextRequest) {
     // Process data based on analysis type
     let analyticsData: Record<string, unknown> = {}
 
+    // Cast performances to the correct type
+    const typedPerformances = (performances || []) as PerformanceData[]
+
     switch (analysisType) {
       case 'trends':
-        analyticsData = generateTrendAnalysis(performances || [])
+        analyticsData = generateTrendAnalysis(typedPerformances)
         break
       case 'comparison':
-        analyticsData = generateComparisonAnalysis(performances || [])
+        analyticsData = generateComparisonAnalysis(typedPerformances)
         break
       case 'player':
-        analyticsData = generatePlayerAnalysis(performances || [], playerId || undefined)
+        analyticsData = generatePlayerAnalysis(typedPerformances, playerId || undefined)
         break
       case 'team':
-        analyticsData = generateTeamAnalysis(performances || [])
+        analyticsData = generateTeamAnalysis(typedPerformances)
         break
       case 'maps':
-        analyticsData = generateMapAnalysis(performances || [])
+        analyticsData = generateMapAnalysis(typedPerformances)
         break
       default:
-        analyticsData = generateOverviewAnalysis(performances || [])
+        analyticsData = generateOverviewAnalysis(typedPerformances)
     }
 
     // Curated insights based on filtered dataset
-    analyticsData.insights = generateInsights(performances || [], analysisType)
+    analyticsData.insights = generateInsights(typedPerformances, analysisType)
 
     return NextResponse.json({
       success: true,
@@ -165,15 +168,26 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Define performance data type
+// Define performance data type that matches Supabase response
 interface PerformanceData {
-  kills?: number;
-  damage?: number;
-  placement?: number;
-  survival_time?: number;
-  created_at?: string;
-  player_id?: string;
-  team_id?: string;
+  kills?: number | null;
+  assists?: number | null;
+  damage?: number | null;
+  placement?: number | null;
+  survival_time?: number | null;
+  created_at?: string | null;
+  player_id?: string | null;
+  team_id?: string | null;
+  map?: string | null;
+  teams?: {
+    id?: string;
+    name?: string;
+  } | null;
+  users?: {
+    id?: string;
+    name?: string;
+    email?: string;
+  } | null;
 }
 
 // Generate trend analysis data
@@ -181,7 +195,7 @@ function generateTrendAnalysis(performances: PerformanceData[]) {
   const groupedByDate = new Map()
   
   performances.forEach(perf => {
-    const date = new Date(perf.created_at).toLocaleDateString()
+    const date = new Date(perf.created_at || new Date()).toLocaleDateString()
     if (!groupedByDate.has(date)) {
       groupedByDate.set(date, {
         date,
@@ -425,7 +439,14 @@ function generateOverviewAnalysis(performances: PerformanceData[]) {
 }
 
 // Helper functions
-function calculateImprovements(trendData: Array<{ kills: number; damage: number; placement: number }>) {
+function calculateImprovements(trendData: Array<{ 
+  date: string; 
+  matches: number; 
+  avgKills: string; 
+  avgDamage: number; 
+  avgSurvival: string; 
+  avgPlacement: string; 
+}>) {
   if (trendData.length < 2) return { kills: 0, damage: 0, placement: 0 }
   
   const recent = trendData.slice(-3)

@@ -12,7 +12,7 @@ let finalKey: string
  * More graceful handling of missing env vars to prevent 500 errors
  */
 if (!supabaseUrl || !supabaseAnonKey) {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && !process.env.BUILD_TIME) {
     throw new Error(
       "Missing required Supabase credentials in production. " +
       "Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY " +
@@ -20,11 +20,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
     )
   } else {
     console.warn(
-      "⚠️ Supabase credentials are missing in development.\n" +
+      "⚠️ Supabase credentials are missing.\n" +
         "Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY " +
         "in your environment variables."
     )
-    // Use dummy values in development only to prevent crashes
+    // Use dummy values to prevent crashes during build or development
     finalUrl = 'https://dummy.supabase.co'
     finalKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1bW15IiwiZXhwIjoxOTg0MTgwODAwfQ.dummy'
   }
