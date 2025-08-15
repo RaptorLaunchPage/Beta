@@ -41,6 +41,7 @@ export async function GET(request: Request) {
     const view = url.searchParams.get('view') // 'current', 'archived', 'all'
     const month = url.searchParams.get('month') // YYYY-MM format
     const teamId = url.searchParams.get('team_id')
+    const id = url.searchParams.get('id')
 
     let query = userSupabase
       .from('slots')
@@ -62,38 +63,46 @@ export async function GET(request: Request) {
       }
     }
 
-    // Team filtering (for admin/manager)
-    if (teamId && shouldSeeAllData) {
-      query = query.eq('team_id', teamId)
-    }
-
-    // Date filtering
-    const today = format(new Date(), 'yyyy-MM-dd')
-
-    if (userRole === 'player') {
-      // Players only see today's slots
-      query = query.eq('date', today)
+    // If id filter provided, apply it and bypass date filters
+    if (id) {
+      query = query.eq('id', id)
+      if (teamId && shouldSeeAllData) {
+        query = query.eq('team_id', teamId)
+      }
     } else {
-      switch (view) {
-        case 'current':
-          query = query.eq('date', today)
-          break
-        case 'archived':
-          if (month) {
-            const monthDate = new Date(month + '-01')
-            const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd')
-            const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd')
-            query = query.gte('date', startDate).lte('date', endDate)
-          } else {
-            query = query.lt('date', today)
-          }
-          break
-        case 'all':
-          // No date filtering
-          break
-        default:
-          // Default to current for non-players
-          query = query.eq('date', today)
+      // Team filtering (for admin/manager)
+      if (teamId && shouldSeeAllData) {
+        query = query.eq('team_id', teamId)
+      }
+
+      // Date filtering
+      const today = format(new Date(), 'yyyy-MM-dd')
+
+      if (userRole === 'player') {
+        // Players only see today's slots
+        query = query.eq('date', today)
+      } else {
+        switch (view) {
+          case 'current':
+            query = query.eq('date', today)
+            break
+          case 'archived':
+            if (month) {
+              const monthDate = new Date(month + '-01')
+              const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd')
+              const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd')
+              query = query.gte('date', startDate).lte('date', endDate)
+            } else {
+              query = query.lt('date', today)
+            }
+            break
+          case 'all':
+            // No date filtering
+            break
+          default:
+            // Default to current for non-players
+            query = query.eq('date', today)
+        }
       }
     }
 
