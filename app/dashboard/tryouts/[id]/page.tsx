@@ -37,7 +37,9 @@ export default function TryoutDetailsPage() {
   const userRole = profile?.role as UserRole
 
   useEffect(() => {
-    loadTryoutDetails()
+    if (params.id) {
+      loadTryoutDetails()
+    }
   }, [params.id])
 
   const loadTryoutDetails = async () => {

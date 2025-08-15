@@ -80,12 +80,13 @@ export default function TryoutsPage() {
     if (profile?.id) {
       loadTryouts()
     }
-  }, [profile])
+  }, [profile?.id])
 
   const loadTryouts = async () => {
     try {
-      setLoading(true)
       const token = await getToken()
+      if (!token) return
+      setLoading(true)
       
       const response = await fetch('/api/tryouts', {
         headers: {
