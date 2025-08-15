@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
           const finalSurvivalTime = survival_time || 0
           const finalPlacement = placement
           const finalTeamId = team_id || user.team_id
-          const finalSlotId = slot_id || slot // Use slot_id if provided, otherwise use legacy slot
+          const finalSlotId = slot_id || slot // Use slot_id if provided, otherwise use legacy slot (which is actually a UUID)
           const finalPlayerId = player_id || user.id
           const finalMatchNumber = match_number || (finalMatchType === 'tournament' ? 1 : 0)
 
@@ -275,7 +275,8 @@ export async function POST(request: NextRequest) {
       damage: finalDamage,
       survival_time: finalSurvivalTime,
       placement: finalPlacement,
-      slot_id: finalSlotId || null,
+      slot_id: finalSlotId || null, // Use slot_id (UUID) field
+      slot: null, // Set legacy slot field to null to avoid confusion
       added_by: user.id
     }
 
