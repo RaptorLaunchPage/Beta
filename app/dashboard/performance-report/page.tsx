@@ -106,24 +106,21 @@ export default function PerformanceReportPage() {
 
   // Load filter options
   useEffect(() => {
+    if (!profile?.id) return
     const controller = new AbortController()
     loadFilterOptions(controller.signal)
     return () => controller.abort()
-  }, [profile])
+  }, [profile?.id])
 
   // Load performance data
   useEffect(() => {
-    if (profile) {
-      const currentIsCoach = profile?.role?.toLowerCase() === "coach"
-      // For coach role, wait for teams to be loaded
-      if (currentIsCoach && teams.length === 0) {
-        return // Don't load performance data yet for coaches until teams are loaded
-      }
-      const controller = new AbortController()
-      loadPerformanceData(controller.signal)
-      return () => controller.abort()
-    }
-  }, [profile, appliedFilters, teams, page, limit])
+    if (!profile?.id) return
+    const currentIsCoach = profile?.role?.toLowerCase() === "coach"
+    if (currentIsCoach && teams.length === 0) return
+    const controller = new AbortController()
+    loadPerformanceData(controller.signal)
+    return () => controller.abort()
+  }, [profile?.id, profile?.role, appliedFilters, teams.length, page, limit])
 
   const loadFilterOptions = async (signal?: AbortSignal) => {
     try {

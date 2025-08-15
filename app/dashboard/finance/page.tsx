@@ -72,6 +72,8 @@ interface NewWinning {
 }
 
 export default function FinancePage() {
+  // NOTE: data fetching hooks gated by profile.id downstream
+
   const { profile } = useAuth()
   const { toast } = useToast()
   

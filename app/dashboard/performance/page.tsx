@@ -66,10 +66,10 @@ export default function PerformancePage() {
   const [customEndDate, setCustomEndDate] = useState<string>("")
 
   useEffect(() => {
-    if (profile) {
+    if (profile?.id) {
       loadAllData()
     }
-  }, [profile])
+  }, [profile?.id])
 
   const loadAllData = async () => {
     setLoading(true)

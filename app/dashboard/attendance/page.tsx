@@ -67,10 +67,10 @@ export default function AttendancePage() {
   const [activeTab, setActiveTab] = useState<string>("daily")
 
   useEffect(() => {
-    if (profile) {
+    if (profile?.id) {
       loadAllData()
     }
-  }, [profile])
+  }, [profile?.id])
 
   const loadAllData = async () => {
     setLoading(true)
