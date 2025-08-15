@@ -171,7 +171,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    
+    // Handle both legacy and new format
     const {
+      // New format fields
       match_type,
       map,
       kills,
@@ -180,11 +183,38 @@ export async function POST(request: NextRequest) {
       survival_time,
       placement,
       team_id,
-      slot_id
+      slot_id,
+      
+      // Legacy format fields (for backward compatibility)
+      match_number,
+      slot,
+      player_id,
+      added_by
     } = body
 
-    // Validate required fields
-    const validation = validateRequiredFields(body, ['match_type', 'kills', 'assists', 'damage', 'survival_time', 'placement'])
+    // Map legacy fields to new format
+    const finalMatchType = match_type || 'practice' // Default to practice if not specified
+    const finalMap = map
+    const finalKills = kills || 0
+    const finalAssists = assists || 0
+    const finalDamage = damage || 0
+    const finalSurvivalTime = survival_time || 0
+    const finalPlacement = placement
+    const finalTeamId = team_id || user.team_id
+    const finalSlotId = slot_id || slot // Use slot_id if provided, otherwise use legacy slot
+    const finalPlayerId = player_id || user.id
+
+    // Validate required fields (using the mapped values)
+    const requiredFields = ['map', 'kills', 'assists', 'damage', 'survival_time', 'placement']
+    const validation = validateRequiredFields({
+      map: finalMap,
+      kills: finalKills,
+      assists: finalAssists,
+      damage: finalDamage,
+      survival_time: finalSurvivalTime,
+      placement: finalPlacement
+    }, requiredFields)
+    
     if (!validation.valid) {
       return createErrorResponse({
         error: `Missing required fields: ${validation.missing.join(', ')}`,
@@ -195,39 +225,37 @@ export async function POST(request: NextRequest) {
 
     // Validate numeric fields
     const numericFields = ['kills', 'assists', 'damage', 'survival_time', 'placement']
-    for (const field of numericFields) {
-      if (typeof body[field] !== 'number' || body[field] < 0) {
+    const numericValues = [finalKills, finalAssists, finalDamage, finalSurvivalTime, finalPlacement]
+    for (let i = 0; i < numericFields.length; i++) {
+      if (typeof numericValues[i] !== 'number' || numericValues[i] < 0) {
         return createErrorResponse({
-          error: `${field} must be a non-negative number`,
+          error: `${numericFields[i]} must be a non-negative number`,
           code: 'INVALID_NUMERIC_VALUE',
           status: 400
         })
       }
     }
 
-    // Validate match_type
-    const validMatchTypes = ['practice', 'tournament', 'scrim']
-    if (!validMatchTypes.includes(match_type)) {
-      return createErrorResponse({
-        error: 'Invalid match type',
-        code: 'INVALID_MATCH_TYPE',
-        status: 400
-      })
-    }
-
     // For players, ensure they can only create performances for themselves
     if (user.role === 'player') {
-      if (team_id && team_id !== user.team_id) {
+      if (finalTeamId && finalTeamId !== user.team_id) {
         return createErrorResponse({
           error: 'Players can only create performances for their own team',
           code: 'TEAM_ACCESS_DENIED',
           status: 403
         })
       }
+      if (finalPlayerId !== user.id) {
+        return createErrorResponse({
+          error: 'Players can only create performances for themselves',
+          code: 'PLAYER_ACCESS_DENIED',
+          status: 403
+        })
+      }
     }
 
     // For coaches, ensure they can only create performances for their team
-    if (user.role === 'coach' && team_id && team_id !== user.team_id) {
+    if (user.role === 'coach' && finalTeamId && finalTeamId !== user.team_id) {
       return createErrorResponse({
         error: 'Coaches can only create performances for their own team',
         code: 'TEAM_ACCESS_DENIED',
@@ -237,16 +265,16 @@ export async function POST(request: NextRequest) {
 
     // Create performance
     const performanceData = {
-      player_id: user.id,
-      team_id: team_id || user.team_id,
-      match_type,
-      map: map || null,
-      kills,
-      assists,
-      damage,
-      survival_time,
-      placement,
-      slot_id: slot_id || null
+      player_id: finalPlayerId,
+      team_id: finalTeamId,
+      match_type: finalMatchType,
+      map: finalMap,
+      kills: finalKills,
+      assists: finalAssists,
+      damage: finalDamage,
+      survival_time: finalSurvivalTime,
+      placement: finalPlacement,
+      slot_id: finalSlotId || null
     }
 
     const { data: performance, error: insertError } = await supabase
