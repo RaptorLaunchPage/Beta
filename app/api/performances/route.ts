@@ -192,7 +192,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Role-based assignment/validation
-    const sanitized = [] as any[]
+    const sanitizedForDb: any[] = []
+    const slotUuidForAttendance: (string | null)[] = []
+
     for (const item of items) {
       const record: any = { ...item }
 
@@ -227,33 +229,39 @@ export async function POST(request: NextRequest) {
       }
 
       // Normalize numeric fields and defaults
+      const isSlotUuid = isUuid(record.slot)
+      const slotDbValue = isSlotUuid
+        ? 0 // DB expects integer NOT NULL; use 0 when a UUID was provided
+        : (record.slot != null && record.slot !== '' ? Number(record.slot) : 0)
+
       record.match_number = Number(record.match_number)
-      record.placement = record.placement != null ? Number(record.placement) : null
+      record.placement = record.placement != null && record.placement !== '' ? Number(record.placement) : null
       record.kills = Number(record.kills || 0)
       record.damage = Number(record.damage || 0)
       record.survival_time = Number(record.survival_time || 0)
       record.assists = Number(record.assists || 0)
-      record.added_by = userData!.id
 
-      sanitized.push({
+      slotUuidForAttendance.push(isSlotUuid ? String(record.slot) : null)
+
+      sanitizedForDb.push({
         player_id: record.player_id,
         team_id: record.team_id,
         match_number: record.match_number,
-        slot: record.slot || null,
+        slot: slotDbValue,
         map: record.map,
         placement: record.placement,
         kills: record.kills,
         damage: record.damage,
         survival_time: record.survival_time,
         assists: record.assists,
-        added_by: record.added_by
+        added_by: userData!.id
       })
     }
 
     // Insert
     const { data: inserted, error: insertError } = await userSupabase
       .from('performances')
-      .insert(sanitized)
+      .insert(sanitizedForDb)
       .select()
 
     if (insertError) {
@@ -270,8 +278,10 @@ export async function POST(request: NextRequest) {
 
     // Auto-create attendance for each inserted performance (best-effort)
     try {
-      for (const perf of inserted || []) {
-        await createMatchAttendance(userSupabase, perf, userData!)
+      for (let i = 0; i < (inserted?.length || 0); i++) {
+        const perf = inserted![i]
+        const slotUuid = slotUuidForAttendance[i]
+        await createMatchAttendance(userSupabase, perf, userData!, slotUuid)
       }
     } catch (attendanceError) {
       console.warn('Failed to create match attendance:', attendanceError)
@@ -293,16 +303,27 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to create match attendance
-async function createMatchAttendance(userSupabase: any, performance: any, userData: any) {
-  // Use current date for session and attendance
-  const currentDate = new Date().toISOString().split('T')[0]
+async function createMatchAttendance(userSupabase: any, performance: any, userData: any, slotUuid?: string | null) {
+  // Use slot date if available, else current date
+  let effectiveDate = new Date().toISOString().split('T')[0]
+
+  if (slotUuid) {
+    const { data: slotRow } = await userSupabase
+      .from('slots')
+      .select('date')
+      .eq('id', slotUuid)
+      .single()
+    if (slotRow?.date) {
+      effectiveDate = slotRow.date
+    }
+  }
   
-  // Check if session already exists for this match
+  // Check if session already exists for this match/date
   const { data: existingSession } = await userSupabase
     .from('sessions')
     .select('id')
     .eq('team_id', performance.team_id)
-    .eq('date', currentDate)
+    .eq('date', effectiveDate)
     .eq('session_type', 'tournament')
     .eq('session_subtype', 'Scrims')
     .single()
@@ -318,7 +339,7 @@ async function createMatchAttendance(userSupabase: any, performance: any, userDa
         team_id: performance.team_id,
         session_type: 'tournament',
         session_subtype: 'Scrims',
-        date: currentDate,
+        date: effectiveDate,
         start_time: '18:00:00',
         end_time: '22:00:00',
         cutoff_time: null,
@@ -345,19 +366,16 @@ async function createMatchAttendance(userSupabase: any, performance: any, userDa
     .single()
 
   if (!existingAttendance) {
-    // Prefer a valid UUID slot_id if provided in performance.slot
-    const slotId = isUuid(performance.slot) ? performance.slot : null
-
     // Create attendance record with schema-compliant fields
     const attendanceData = {
       player_id: performance.player_id,
       team_id: performance.team_id,
-      date: currentDate,
+      date: effectiveDate,
       session_time: 'Scrims',
       session_id: sessionId,
       status: 'present',
       source: 'auto',
-      slot_id: slotId,
+      slot_id: slotUuid || null,
       created_at: new Date().toISOString()
     }
 
