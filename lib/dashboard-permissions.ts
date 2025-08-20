@@ -42,7 +42,7 @@ export const DASHBOARD_MODULES: DashboardModule[] = [
     description: 'Performance analytics and reports',
     icon: 'BarChart3',
     path: '/dashboard/analytics',
-    allowedRoles: ['admin', 'manager', 'coach', 'analyst'],
+    allowedRoles: ['admin', 'manager', 'coach', 'player', 'analyst'],
     showInNavigation: true,
     mobileOrder: 2
   },

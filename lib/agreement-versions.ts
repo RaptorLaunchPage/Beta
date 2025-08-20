@@ -4,8 +4,12 @@
 // Update these versions when agreement content changes
 
 export const CURRENT_AGREEMENT_VERSIONS = {
-  player: 2
-  // Note: admin and all non-player roles are exempt from agreement enforcement
+  // Enforce agreements for these roles
+  player: 2,
+  coach: 1,
+  manager: 1,
+  analyst: 1
+  // Note: admin, pending_player, and tryout are exempt from agreement enforcement
 } as const;
 
 export type AgreementRole = keyof typeof CURRENT_AGREEMENT_VERSIONS;
