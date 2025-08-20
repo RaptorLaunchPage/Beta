@@ -16,11 +16,7 @@ export default function IncentivesPage() {
         
         {/* Hero */}
         <section className="relative h-[48vh] sm:h-[56vh] w-full pt-14">
-          <div className="absolute inset-0">
-            {/* Replace with trophy background */}
-            <div className="h-full w-full bg-[url('/images/trophy-hero.jpg')] bg-cover bg-center brightness-[.7]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
           <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4">
             <FadeInOnScroll>
               <h1 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-xl">Earn more as you climb the ranks.</h1>

@@ -6,7 +6,7 @@ Allow: /public
 Allow: /about
 Allow: /incentives
 Allow: /tier-structure
-Allow: /gallery
+# Allow: /gallery
 Allow: /join-us
 Allow: /contact
 Allow: /faq

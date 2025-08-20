@@ -17,12 +17,8 @@ export default function AboutPage() {
         <PublicNavigation />
         
         {/* Hero */}
-        <section className="relative h-[52vh] sm:h-[60vh] w-full pt-14">
-          <div className="absolute inset-0">
-            {/* Replace with blurred collage image via CSS background */}
-            <div className="h-full w-full bg-[url('/images/about-collage.jpg')] bg-cover bg-center blur-[2px] brightness-[.65]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-          </div>
+        <section className="relative h-[38vh] sm:h-[46vh] w-full pt-14">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
           <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4">
             <FadeInOnScroll>
               <h1 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-xl">Powered by AI. Backed by Raptor.</h1>

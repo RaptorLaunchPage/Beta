@@ -21,7 +21,6 @@ const PUBLIC_ROUTES = [
   '/about',
   '/incentives',
   '/tier-structure',
-  '/gallery',
   '/apply',
   '/join-us',
   '/contact',

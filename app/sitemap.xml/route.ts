@@ -6,7 +6,7 @@ const PUBLIC_ROUTES = [
   '/about',
   '/incentives',
   '/tier-structure',
-  '/gallery',
+  // '/gallery',
   '/join-us',
   '/contact',
   '/faq',
