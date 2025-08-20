@@ -334,15 +334,16 @@ function buildPlayerSectionData(performances: any[]) {
   })
   const topPerformers = { players: Array.from(playersMap.values()) }
 
-  // AI-style insights
+  // AI-style insights (detailed + suggestions embedded in description)
   const insights: Array<{ category: string; title: string; description: string }> = []
 
   if (totalMatches > 0) {
     // Overall average-based insight
+    const kdDescriptor = playerStats.avgKills >= 5 ? 'High Kill Rate' : playerStats.avgKills >= 3 ? 'Solid Kill Output' : 'Developing Kill Rate'
     insights.push({
       category: 'overview',
-      title: playerStats.avgKills >= 5 ? 'High Kill Rate' : 'Developing Kill Rate',
-      description: `Averaging ${playerStats.avgKills} kills per match across ${totalMatches} matches.`
+      title: kdDescriptor,
+      description: `Averaging ${playerStats.avgKills} kills and ${playerStats.avgDamage} damage per match across ${totalMatches} matches. Suggestions: \n• Continue building on strengths by preserving late-game utility if avg placement ≤ ${playerStats.avgPlacement}. \n• If damage >> kills in individual games, prioritize finish-secure drills (grenade usage and better team focus fire).`
     })
 
     // Recent trend: last 5 vs previous 5
@@ -355,7 +356,7 @@ function buildPlayerSectionData(performances: any[]) {
       insights.push({
         category: 'trend',
         title: diff >= 0 ? 'Improving Recent Form' : 'Recent Dip in Kills',
-        description: `${diff >= 0 ? '+' : ''}${diff} avg kills compared to the previous 5 matches.`
+        description: `${diff >= 0 ? '+' : ''}${diff} avg kills vs previous 5 matches. Suggestions: \n• ${diff >= 0 ? 'Maintain current routines; add VOD notes to lock patterns that worked.' : 'Review early-game fights and rotations in VODs; adjust drop spots or 3rd-party timings.'} \n• Run micro-aim routine (10–15 min) pre-scrim to stabilize crosshair placement.`
       })
     }
 
@@ -375,8 +376,21 @@ function buildPlayerSectionData(performances: any[]) {
       insights.push({
         category: 'map',
         title: 'Best Performing Map',
-        description: `${bestMap.map} with ${(bestMap.avg).toFixed(2)} avg kills.`
+        description: `${bestMap.map} with ${(bestMap.avg).toFixed(2)} avg kills. Suggestions: \n• Queue more scrims on ${bestMap.map} to consolidate strengths. \n• Prepare two backup rotations to avoid predictable routes when contested.`
       })
+    }
+
+    // Worst placement indicator
+    const placements = performances.map(p => p.placement || 0).filter(n => n > 0)
+    if (placements.length > 0) {
+      const avgPlacement = placements.reduce((a, b) => a + b, 0) / placements.length
+      if (avgPlacement > 8) {
+        insights.push({
+          category: 'placement',
+          title: 'Low Average Placement',
+          description: `Average placement ${avgPlacement.toFixed(0)} suggests mid/late-game survivability gaps. Suggestions: \n• Prioritize edge-to-center timing; avoid mid-transition open fields. \n• Keep one utility slot reserved for end-game (smokes/molotovs). \n• Establish clear IGL calls for disengage vs commit in 3rd parties.`
+        })
+      }
     }
   }
 
@@ -438,27 +452,37 @@ function buildTeamComparisonData(performances: any[]) {
     bestWinRate
   }
 
-  // Insights for teams
+  // Insights for teams (detailed)
   const insights: Array<{ category: string; title: string; description: string }> = []
   if (mostKills) {
     insights.push({
       category: 'kills',
       title: 'Top Team by Avg Kills',
-      description: `${mostKills.teamName}: ${mostKills.avgKills} avg kills per match.`
+      description: `${mostKills.teamName}: ${mostKills.avgKills} avg kills per match. Suggestions: \n• Share comms/VOD snippets of their opener patterns and timing. \n• Emulate their isolation strategy for 2v1s and quick trades.`
     })
   }
   if (mostDamage) {
     insights.push({
       category: 'damage',
       title: 'Highest Avg Damage Team',
-      description: `${mostDamage.teamName}: ${mostDamage.avgDamage} avg damage.`
+      description: `${mostDamage.teamName}: ${mostDamage.avgDamage} avg damage. Suggestions: \n• If kills trail damage, drill finish-secure (nade timings, wide-swing sync). \n• Rotate faster to convert knocks before revives.`
     })
   }
   if (bestWinRate) {
     insights.push({
       category: 'winrate',
       title: 'Best Win Rate',
-      description: `${bestWinRate.teamName}: ${bestWinRate.winRate}% win rate.`
+      description: `${bestWinRate.teamName}: ${bestWinRate.winRate}% win rate. Suggestions: \n• Study their late-game spacing and smoke layering. \n• Borrow their risk threshold for taking or skipping mid-zone fights.`
+    })
+  }
+
+  // Identify team needing focus (lowest avg kills or highest avg placement)
+  const needFocus = [...teamComparison].sort((a, b) => a.avgKills - b.avgKills)[0]
+  if (needFocus) {
+    insights.push({
+      category: 'focus',
+      title: 'Team Needs Support',
+      description: `${needFocus.teamName} has the lowest avg kills (${needFocus.avgKills}). Suggestions: \n• Schedule targeted scrims vs comparable opponents. \n• Assign aim drills and comm review; limit risky splits until stability improves.`
     })
   }
 
@@ -500,14 +524,14 @@ function buildTrendSectionData(performances: any[]) {
     insights.push({
       category: 'trend',
       title: diff >= 0 ? 'Positive Kill Trend' : 'Negative Kill Trend',
-      description: `${diff >= 0 ? '+' : ''}${diff} avg kills over the selected period.`
+      description: `${diff >= 0 ? '+' : ''}${diff} avg kills over the selected period. Suggestions: \n• ${diff >= 0 ? 'Add structured post-scrim VOD checklist; preserve routines that correlate with upticks.' : 'Audit first 8 minutes for over-fighting; add one safer macro route on poor days.'}`
     })
   }
   if (summary.bestDay) {
     insights.push({
       category: 'best-day',
       title: 'Best Day Identified',
-      description: `${summary.bestDay.date} with ${summary.bestDay.avgKills} avg kills.`
+      description: `${summary.bestDay.date} with ${summary.bestDay.avgKills} avg kills. Suggestions: \n• Replicate scrim schedule and warmup routine used on that day for the next block.`
     })
   }
 
