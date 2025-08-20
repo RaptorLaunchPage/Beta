@@ -334,8 +334,51 @@ function buildPlayerSectionData(performances: any[]) {
   })
   const topPerformers = { players: Array.from(playersMap.values()) }
 
-  // Insights placeholder
-  const insights: any[] = []
+  // AI-style insights
+  const insights: Array<{ category: string; title: string; description: string }> = []
+
+  if (totalMatches > 0) {
+    // Overall average-based insight
+    insights.push({
+      category: 'overview',
+      title: playerStats.avgKills >= 5 ? 'High Kill Rate' : 'Developing Kill Rate',
+      description: `Averaging ${playerStats.avgKills} kills per match across ${totalMatches} matches.`
+    })
+
+    // Recent trend: last 5 vs previous 5
+    const lastFive = performances.slice(0, 5)
+    const prevFive = performances.slice(5, 10)
+    if (lastFive.length > 0 && prevFive.length > 0) {
+      const lastFiveAvg = +(lastFive.reduce((s, p) => s + (p.kills || 0), 0) / lastFive.length).toFixed(2)
+      const prevFiveAvg = +(prevFive.reduce((s, p) => s + (p.kills || 0), 0) / prevFive.length).toFixed(2)
+      const diff = +(lastFiveAvg - prevFiveAvg).toFixed(2)
+      insights.push({
+        category: 'trend',
+        title: diff >= 0 ? 'Improving Recent Form' : 'Recent Dip in Kills',
+        description: `${diff >= 0 ? '+' : ''}${diff} avg kills compared to the previous 5 matches.`
+      })
+    }
+
+    // Best map by average kills
+    const mapAgg = new Map<string, { kills: number; matches: number }>()
+    performances.forEach(p => {
+      const m = p.map || 'Unknown'
+      const e = mapAgg.get(m) || { kills: 0, matches: 0 }
+      e.kills += p.kills || 0
+      e.matches += 1
+      mapAgg.set(m, e)
+    })
+    const bestMap = Array.from(mapAgg.entries())
+      .map(([map, v]) => ({ map, avg: v.kills / Math.max(1, v.matches) }))
+      .sort((a, b) => b.avg - a.avg)[0]
+    if (bestMap) {
+      insights.push({
+        category: 'map',
+        title: 'Best Performing Map',
+        description: `${bestMap.map} with ${(bestMap.avg).toFixed(2)} avg kills.`
+      })
+    }
+  }
 
   // Recent matches
   const recentMatches = performanceTrend
@@ -395,9 +438,34 @@ function buildTeamComparisonData(performances: any[]) {
     bestWinRate
   }
 
+  // Insights for teams
+  const insights: Array<{ category: string; title: string; description: string }> = []
+  if (mostKills) {
+    insights.push({
+      category: 'kills',
+      title: 'Top Team by Avg Kills',
+      description: `${mostKills.teamName}: ${mostKills.avgKills} avg kills per match.`
+    })
+  }
+  if (mostDamage) {
+    insights.push({
+      category: 'damage',
+      title: 'Highest Avg Damage Team',
+      description: `${mostDamage.teamName}: ${mostDamage.avgDamage} avg damage.`
+    })
+  }
+  if (bestWinRate) {
+    insights.push({
+      category: 'winrate',
+      title: 'Best Win Rate',
+      description: `${bestWinRate.teamName}: ${bestWinRate.winRate}% win rate.`
+    })
+  }
+
   return {
     topPerformers,
-    teamComparison
+    teamComparison,
+    insights
   }
 }
 
@@ -426,7 +494,22 @@ function buildTrendSectionData(performances: any[]) {
     }
   }
 
-  const insights: any[] = []
+  const insights: Array<{ category: string; title: string; description: string }> = []
+  if (trendData.length > 1) {
+    const diff = +(trendData[trendData.length - 1].avgKills - trendData[0].avgKills).toFixed(2)
+    insights.push({
+      category: 'trend',
+      title: diff >= 0 ? 'Positive Kill Trend' : 'Negative Kill Trend',
+      description: `${diff >= 0 ? '+' : ''}${diff} avg kills over the selected period.`
+    })
+  }
+  if (summary.bestDay) {
+    insights.push({
+      category: 'best-day',
+      title: 'Best Day Identified',
+      description: `${summary.bestDay.date} with ${summary.bestDay.avgKills} avg kills.`
+    })
+  }
 
   return {
     summary,
