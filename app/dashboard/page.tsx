@@ -380,11 +380,11 @@ export default function OptimizedDashboardPage() {
             kdRatio: matches > 0 ? (metrics.totalKills || 0) / matches : 0,
             totalExpense: financial.totalExpenses || 0,
             totalProfitLoss: financial.netProfit || 0,
-            activeTeams: 0,
-            activePlayers: 0,
-            todayMatches: 0,
-            weekMatches: trends.last7DaysMatches || 0,
-            avgPlacement: 0,
+            activeTeams: metrics.activeTeams || 0,
+            activePlayers: metrics.activePlayers || 0,
+            todayMatches: trends.todayMatches || 0,
+            weekMatches: trends.weekMatches || trends.last7DaysMatches || 0,
+            avgPlacement: metrics.avgPlacement || 0,
             overallAttendanceRate: 0,
           }
         } else {

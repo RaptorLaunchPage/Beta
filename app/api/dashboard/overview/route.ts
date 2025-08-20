@@ -73,11 +73,28 @@ export async function GET(request: NextRequest) {
       winningsQuery = winningsQuery.eq('team_id', user.team_id)
     }
 
+    // Additional queries for org-wide aggregates
+    let playersQuery = supabase
+      .from('users')
+      .select('id, role, team_id')
+
+    let teamsQuery = supabase
+      .from('teams')
+      .select('id, status')
+
+    // Scope non-admin/manager to their team
+    if (['coach', 'analyst', 'player'].includes(user.role) && user.team_id) {
+      playersQuery = playersQuery.eq('team_id', user.team_id)
+      teamsQuery = teamsQuery.eq('id', user.team_id)
+    }
+
     // Execute all queries in parallel
-    const [perfRes, expenseRes, winningsRes] = await Promise.all([
+    const [perfRes, expenseRes, winningsRes, playersRes, teamsRes] = await Promise.all([
       perfQuery,
       expenseQuery,
-      winningsQuery
+      winningsQuery,
+      playersQuery,
+      teamsQuery
     ])
 
     // Handle performance data
@@ -117,6 +134,8 @@ export async function GET(request: NextRequest) {
     const performances = perfRes.data || []
     const expenses = expenseRes.data || []
     const winnings = winningsRes.data || []
+    const usersData = playersRes.error ? [] : (playersRes.data || [])
+    const teamsData = teamsRes.error ? [] : (teamsRes.data || [])
 
     const totalMatches = performances.length
     const totalKills = performances.reduce((sum, p) => sum + (p.kills || 0), 0)
@@ -155,6 +174,20 @@ export async function GET(request: NextRequest) {
     const prev7AvgKills = previous7Days.length > 0 ? previous7Days.reduce((sum, p) => sum + (p.kills || 0), 0) / previous7Days.length : 0
     const killsTrend = prev7AvgKills > 0 ? ((last7AvgKills - prev7AvgKills) / prev7AvgKills) * 100 : 0
 
+    // Today and week match counts
+    const today = new Date(); today.setHours(0,0,0,0)
+    const oneWeekAgo = new Date(); oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+    const todayMatches = performances.filter(p => new Date(p.created_at) >= today).length
+    const weekMatches = performances.filter(p => new Date(p.created_at) >= oneWeekAgo).length
+
+    // Average placement
+    const placements = performances.map(p => p.placement || 0).filter(v => v > 0)
+    const avgPlacement = placements.length > 0 ? Math.round(placements.reduce((a, b) => a + b, 0) / placements.length) : 0
+
+    // Active aggregates
+    const activePlayers = usersData.filter((u: any) => u.role === 'player').length
+    const activeTeams = teamsData.filter((t: any) => (t.status || '').toLowerCase() === 'active').length || (teamsData.length > 0 ? teamsData.length : 0)
+
     return createSuccessResponse({
       stats: {
         timeframe,
@@ -167,7 +200,10 @@ export async function GET(request: NextRequest) {
           avgKills: Math.round(avgKills * 100) / 100,
           avgDamage: Math.round(avgDamage),
           avgSurvivalTime: Math.round(avgSurvivalTime * 100) / 100,
-          winRate: Math.round(winRate * 100) / 100
+          winRate: Math.round(winRate * 100) / 100,
+          avgPlacement,
+          activePlayers,
+          activeTeams
         },
         financial: {
           totalExpenses,
@@ -177,7 +213,9 @@ export async function GET(request: NextRequest) {
         trends: {
           killsTrend: Math.round(killsTrend * 100) / 100,
           last7DaysMatches: last7Days.length,
-          previous7DaysMatches: previous7Days.length
+          previous7DaysMatches: previous7Days.length,
+          todayMatches,
+          weekMatches
         },
         userRole: user.role
       }
