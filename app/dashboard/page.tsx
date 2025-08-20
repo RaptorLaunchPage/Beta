@@ -366,7 +366,30 @@ export default function OptimizedDashboardPage() {
       let baseStats: any
       if (overviewRes.ok) {
         const payload = await overviewRes.json()
-        baseStats = payload.stats
+        const statsPayload = payload?.stats || payload?.data || payload || {}
+        if (statsPayload?.metrics || statsPayload?.financial || statsPayload?.trends) {
+          const metrics = statsPayload.metrics || {}
+          const financial = statsPayload.financial || {}
+          const trends = statsPayload.trends || {}
+          const matches = metrics.totalMatches || 0
+          baseStats = {
+            totalMatches: matches,
+            totalKills: metrics.totalKills || 0,
+            avgDamage: metrics.avgDamage || 0,
+            avgSurvival: metrics.avgSurvivalTime || 0,
+            kdRatio: matches > 0 ? (metrics.totalKills || 0) / matches : 0,
+            totalExpense: financial.totalExpenses || 0,
+            totalProfitLoss: financial.netProfit || 0,
+            activeTeams: 0,
+            activePlayers: 0,
+            todayMatches: 0,
+            weekMatches: trends.last7DaysMatches || 0,
+            avgPlacement: 0,
+            overallAttendanceRate: 0,
+          }
+        } else {
+          baseStats = statsPayload
+        }
       } else {
         // Client fallback
         const roleScopedPerformances = perfForTop
