@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { 
   authenticateRequest, 
   createErrorResponse, 
-  createSuccessResponse, 
+  createWrappedSuccessResponse, 
   checkRoleAccess,
   isValidUuid,
   handleCors
@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
     const timeframe = searchParams.get('timeframe') || '30'
     const teamId = searchParams.get('teamId')
     const playerId = searchParams.get('playerId')
-    const analysisType = searchParams.get('type') || 'overview'
+    const requestedType = (searchParams.get('type') || 'overview').toLowerCase()
+    const analysisType = requestedType === 'comparison' ? 'team' : requestedType
     const limitParam = parseInt(searchParams.get('limit') || '0')
     const limit = limitParam > 0 ? Math.min(limitParam, 1000) : 0
 
@@ -63,8 +64,8 @@ export async function GET(request: NextRequest) {
     let performanceQuery = supabase
       .from('performances')
       .select(
-        analysisType === 'overview' || analysisType === 'team'
-          ? 'kills,damage,survival_time,placement,created_at,player_id,team_id,map'
+        analysisType === 'overview' || analysisType === 'team' || analysisType === 'trends'
+          ? 'kills,damage,survival_time,placement,created_at,player_id,team_id,map, users:player_id(id, name, email), teams:team_id(id, name)'
           : '*, users:player_id(id, name, email), teams:team_id(id, name)'
       )
       .gte('created_at', startDate.toISOString())
@@ -108,27 +109,27 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Calculate analytics based on analysis type
-    let analytics = {}
-    
-    if (analysisType === 'overview') {
-      analytics = calculateOverviewAnalytics(performances || [])
-    } else if (analysisType === 'team') {
-      analytics = calculateTeamAnalytics(performances || [])
-    } else if (analysisType === 'player') {
-      analytics = calculatePlayerAnalytics(performances || [])
+    // Construct UI-friendly data based on requested analysis type
+    const perfArray = performances || []
+
+    if (analysisType === 'player') {
+      const data = buildPlayerSectionData(perfArray)
+      return createWrappedSuccessResponse(data)
     }
 
-    return createSuccessResponse({
-      performances: performances || [],
-      analytics,
-      timeframe: parseInt(timeframe),
-      filters: {
-        teamId,
-        playerId,
-        analysisType
-      }
-    })
+    if (analysisType === 'team') {
+      const data = buildTeamComparisonData(perfArray)
+      return createWrappedSuccessResponse(data)
+    }
+
+    if (analysisType === 'trends') {
+      const data = buildTrendSectionData(perfArray)
+      return createWrappedSuccessResponse(data)
+    }
+
+    // Default overview fallback
+    const overview = calculateOverviewAnalytics(perfArray)
+    return createWrappedSuccessResponse(overview)
 
   } catch (error) {
     console.error('Error in analytics API:', error)
@@ -288,5 +289,148 @@ function calculatePlayerAnalytics(performances: any[]) {
   return {
     playerStats: Object.fromEntries(playerStats),
     playerRankings
+  }
+}
+
+// Builders to match UI expectations
+function buildPlayerSectionData(performances: any[]) {
+  // Aggregate player-level stats
+  const totalMatches = performances.length
+  const totalKills = performances.reduce((s, p) => s + (p.kills || 0), 0)
+  const totalDamage = performances.reduce((s, p) => s + (p.damage || 0), 0)
+  const totalPlacement = performances.reduce((s, p) => s + (p.placement || 0), 0)
+
+  const playerStats = {
+    totalMatches,
+    avgKills: totalMatches ? +(totalKills / totalMatches).toFixed(2) : 0,
+    avgDamage: totalMatches ? Math.round(totalDamage / totalMatches) : 0,
+    avgPlacement: totalMatches ? Math.round(totalPlacement / totalMatches) : 0
+  }
+
+  // Radar data example
+  const radarData = [
+    { metric: 'Kills', value: playerStats.avgKills },
+    { metric: 'Damage', value: playerStats.avgDamage / 100 },
+    { metric: 'Placement', value: Math.max(0, 10 - playerStats.avgPlacement) }
+  ]
+
+  // Performance trend (last 10)
+  const performanceTrend = performances.slice(0, 10).map((p, idx) => ({
+    match: `#${performances.length - idx}`,
+    kills: p.kills || 0,
+    damage: p.damage || 0,
+    placement: p.placement || 0,
+    assists: p.assists || 0,
+    survival: Math.round((p.survival_time || 0) / 60)
+  })).reverse()
+
+  // Player options (for staff views)
+  const playersMap = new Map<string, any>()
+  performances.forEach(p => {
+    const id = p.player_id
+    const name = p.users?.name || p.users?.email || 'Player'
+    if (!id) return
+    if (!playersMap.has(id)) playersMap.set(id, { id, name })
+  })
+  const topPerformers = { players: Array.from(playersMap.values()) }
+
+  // Insights placeholder
+  const insights: any[] = []
+
+  // Recent matches
+  const recentMatches = performanceTrend
+
+  return {
+    playerStats,
+    radarData,
+    performanceTrend,
+    topPerformers,
+    insights,
+    recentMatches
+  }
+}
+
+function buildTeamComparisonData(performances: any[]) {
+  const teamAgg = new Map<string, any>()
+  performances.forEach(p => {
+    if (!p.team_id) return
+    const key = p.team_id
+    if (!teamAgg.has(key)) {
+      teamAgg.set(key, {
+        teamId: key,
+        teamName: p.teams?.name || 'Team',
+        matches: 0,
+        totalKills: 0,
+        totalDamage: 0,
+        wins: 0,
+        placements: 0
+      })
+    }
+    const a = teamAgg.get(key)
+    a.matches += 1
+    a.totalKills += p.kills || 0
+    a.totalDamage += p.damage || 0
+    a.wins += (p.placement === 1 ? 1 : 0)
+    a.placements += p.placement || 0
+  })
+
+  const teamComparison = Array.from(teamAgg.values()).map(a => ({
+    teamId: a.teamId,
+    teamName: a.teamName,
+    matches: a.matches,
+    avgKills: +(a.totalKills / Math.max(1, a.matches)).toFixed(2),
+    avgDamage: Math.round(a.totalDamage / Math.max(1, a.matches)),
+    winRate: +((a.wins / Math.max(1, a.matches)) * 100).toFixed(1),
+    avgPlacement: Math.round(a.placements / Math.max(1, a.matches))
+  }))
+
+  // Top performers across teams
+  const mostKills = [...teamComparison].sort((a, b) => b.avgKills - a.avgKills)[0]
+  const mostDamage = [...teamComparison].sort((a, b) => b.avgDamage - a.avgDamage)[0]
+  const bestWinRate = [...teamComparison].sort((a, b) => b.winRate - a.winRate)[0]
+
+  const topPerformers = {
+    mostKills,
+    mostDamage,
+    bestWinRate
+  }
+
+  return {
+    topPerformers,
+    teamComparison
+  }
+}
+
+function buildTrendSectionData(performances: any[]) {
+  // Group by date
+  const dayMap = new Map<string, { kills: number; matches: number }>()
+  performances.forEach(p => {
+    const d = new Date(p.created_at)
+    const key = d.toISOString().split('T')[0]
+    const entry = dayMap.get(key) || { kills: 0, matches: 0 }
+    entry.kills += p.kills || 0
+    entry.matches += 1
+    dayMap.set(key, entry)
+  })
+
+  const days = Array.from(dayMap.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  const trendData = days.map(([date, v]) => ({ date, avgKills: +(v.kills / Math.max(1, v.matches)).toFixed(2) }))
+
+  const summary = {
+    totalDays: days.length,
+    bestDay: days.sort((a, b) => (b[1].kills / Math.max(1, b[1].matches)) - (a[1].kills / Math.max(1, a[1].matches)))[0]
+      ? { date: days[0][0], avgKills: +(days[0][1].kills / Math.max(1, days[0][1].matches)).toFixed(2) }
+      : null,
+    improvements: {
+      kills: trendData.length > 1 ? +(trendData[trendData.length - 1].avgKills - trendData[0].avgKills).toFixed(2) : 0
+    }
+  }
+
+  const insights: any[] = []
+
+  return {
+    summary,
+    trendData,
+    insights
   }
 }
