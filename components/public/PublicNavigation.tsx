@@ -28,7 +28,7 @@ export function PublicNavigation() {
         {/* Mobile menu (left) */}
         <div className="md:hidden">
           <Sheet>
-            <SheetTrigger aria-label="Open menu" className="p-2 rounded-md border border-white/15 bg-black/50 backdrop-blur-sm text-white">
+            <SheetTrigger aria-label="Open menu" className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-white/15 bg-black/50 backdrop-blur-sm text-white p-0">
               <Menu className="h-5 w-5" />
             </SheetTrigger>
             <SheetContent side="left" className="bg-black/50 backdrop-blur-lg border-white/15 text-white w-72">
