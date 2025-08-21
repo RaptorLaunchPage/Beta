@@ -331,11 +331,11 @@ export default function DiscordLogsPage() {
                 <TableRow>
                   <TableHead>Status</TableHead>
                   <TableHead>Message Type</TableHead>
-                  <TableHead>Timestamp</TableHead>
+                  <TableHead className="whitespace-nowrap">Timestamp</TableHead>
                   <TableHead>Webhook Type</TableHead>
                   <TableHead>Retry Count</TableHead>
-                  <TableHead>Error</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="whitespace-nowrap">Error</TableHead>
+                  <TableHead className="whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -352,9 +352,7 @@ export default function DiscordLogsPage() {
                     <TableCell>
                       {MESSAGE_TYPE_LABELS[log.message_type] || log.message_type}
                     </TableCell>
-                    <TableCell>
-                      {new Date(log.timestamp).toLocaleString()}
-                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</TableCell>
                     <TableCell>
                       <Badge variant="outline">
                         {log.discord_webhooks?.type || 'Unknown'}
@@ -367,16 +365,16 @@ export default function DiscordLogsPage() {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="max-w-[160px] sm:max-w-none">
                       {log.error_message ? (
-                        <span className="text-sm text-red-600 truncate max-w-xs block" title={log.error_message}>
+                        <span className="text-xs sm:text-sm text-red-600 truncate block" title={log.error_message}>
                           {log.error_message}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap text-right sm:text-left">
                       {log.status === 'failed' && permissions.manageDiscordPortal && (
                         <Button
                           size="sm"

@@ -117,22 +117,13 @@ export default function AgreementReviewPage() {
     try {
       const success = await acceptAgreement()
       if (success) {
-        toast({
-          title: "Agreement Accepted",
-          description: "Thank you for accepting the agreement. Redirecting to dashboard...",
-        })
-        setTimeout(() => {
-          router.push('/dashboard')
-        }, 500)
+        toast({ title: "Agreement Accepted", description: "Redirecting to dashboard..." })
+        router.replace('/dashboard')
       } else {
         throw new Error('Failed to accept agreement')
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to accept agreement. Please try again.",
-        variant: "destructive"
-      })
+      toast({ title: "Error", description: "Failed to accept agreement. Please try again.", variant: "destructive" })
     } finally {
       setSubmitting(false)
     }
@@ -176,7 +167,7 @@ export default function AgreementReviewPage() {
   // Redirect if no agreement needed
   useEffect(() => {
     if (!authLoading && agreementStatus && !agreementStatus.requiresAgreement) {
-      router.push('/dashboard')
+      router.replace('/dashboard')
     }
   }, [authLoading, agreementStatus, router])
 

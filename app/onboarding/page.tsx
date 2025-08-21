@@ -48,6 +48,7 @@ export default function OnboardingPage() {
   
   // Add refs to prevent multiple redirects
   const mounted = useRef(true)
+  const redirected = useRef(false)
 
   useEffect(() => {
     // Redirect if user is already onboarded or not authenticated
@@ -154,13 +155,11 @@ export default function OnboardingPage() {
 
       // Refresh the auth state to pick up the profile changes
       await refreshProfile()
-
-      // Redirect to dashboard after a brief delay
-      setTimeout(() => {
-        if (mounted.current) {
-          safeRedirect('/dashboard', { delay: 1000 })
-        }
-      }, 1000) // Increased delay to ensure state updates are complete
+      if (!redirected.current) {
+        redirected.current = true
+        router.replace('/dashboard')
+        setTimeout(() => safeRedirect('/dashboard'), 200)
+      }
 
     } catch (error: any) {
       console.error('Onboarding error:', error)

@@ -18,6 +18,8 @@ import { useToast } from "@/hooks/use-toast"
 
 import { Bolt, Send, Link2 } from "lucide-react"
 
+const DISCORD_INVITE = process.env.NEXT_PUBLIC_DISCORD_INVITE || 'https://discord.com/invite/'
+
 export default function JoinUsPage() {
   const { toast } = useToast()
   // No webhook selection; handled by public API + env vars
@@ -41,6 +43,8 @@ export default function JoinUsPage() {
     results: "",
     acceptedPolicy: false,
   })
+
+  const [submitted, setSubmitted] = useState(false)
 
   const availableGames = useMemo(
     () => ["BGMI", "Valorant", "CS2", "Dota 2", "COD Mobile", "PUBG PC", "Apex Legends", "Other"],
@@ -85,7 +89,8 @@ export default function JoinUsPage() {
         const e = await res.json().catch(() => ({}))
         throw new Error(e.error || 'Failed to submit')
       }
-      toast({ title: "Application submitted", description: "We will review your application within 7 days." })
+      setSubmitted(true)
+      toast({ title: "Application submitted", description: "Join our Discord for updates and communication." })
     } catch (err:any) {
       toast({ title: 'Submission failed', description: err.message || 'Please try again later', variant: 'destructive' })
     }
@@ -117,7 +122,8 @@ export default function JoinUsPage() {
         const e = await res.json().catch(() => ({}))
         throw new Error(e.error || 'Failed to submit')
       }
-      toast({ title: "Inquiry sent", description: "Thanks for reaching out. We will get back shortly." })
+      setSubmitted(true)
+      toast({ title: "Inquiry sent", description: "Join our Discord for updates and communication." })
     } catch (err:any) {
       toast({ title: 'Submission failed', description: err.message || 'Please try again later', variant: 'destructive' })
     }
@@ -155,15 +161,29 @@ export default function JoinUsPage() {
           </div>
         </section>
 
-        {/* Form Section */}
+        {/* Form or Thank You Section */}
         <section id="application-form" className="max-w-6xl mx-auto px-4 py-10">
           <FadeInOnScroll>
             <Card className="bg-black/60 backdrop-blur-md border-white/20 text-white">
-              <CardHeader>
-                <CardTitle className="text-2xl">Application</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handlePlayerSubmit} className="space-y-6">
+              {submitted ? (
+                <CardContent className="p-8 text-center">
+                  <div className="text-2xl font-semibold">Thank you for your application!</div>
+                  <p className="text-white/80 mt-2">We’ll review your submission shortly.</p>
+                  <p className="text-white/80 mt-6">Join our Discord for updates and any further communication.</p>
+                  <div className="mt-3">
+                    <a
+                      href={DISCORD_INVITE}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center px-5 py-2 rounded-md font-semibold bg-[#5865F2] hover:bg-[#4752C4] text-white"
+                    >
+                      Join our Discord
+                    </a>
+                  </div>
+                </CardContent>
+              ) : (
+                <CardContent>
+                  <form onSubmit={handlePlayerSubmit} className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FadeInOnScroll className="space-y-2">
                           <label className="text-sm text-white/90">Name *</label>
@@ -328,8 +348,8 @@ export default function JoinUsPage() {
                         </div>
                       </FadeInOnScroll>
                     </form>
-
-                                  </CardContent>
+                </CardContent>
+              )}
             </Card>
           </FadeInOnScroll>
         </section>
