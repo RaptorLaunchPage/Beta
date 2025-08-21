@@ -525,7 +525,6 @@ export default function FAQPage() {
         {/* Hero */}
         <section className="relative h-[38vh] sm:h-[46vh] w-full pt-14">
           <div className="absolute inset-0" aria-hidden>
-            <div className="h-full w-full bg-[url('/images/faq-hero.jpg')] bg-cover bg-center blur-[2px] brightness-[.65]" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
           </div>
           <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4">

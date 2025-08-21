@@ -71,6 +71,16 @@ export default function SlotsPage() {
   }, [profile])
 
   useEffect(() => {
+    if (!profile?.role) return
+    const role = profile.role.toLowerCase()
+    if (['admin', 'manager'].includes(role)) {
+      setCurrentView('all')
+    } else {
+      setCurrentView('current')
+    }
+  }, [profile?.role])
+
+  useEffect(() => {
     if (profile) {
       fetchSlots(currentView, filterMonth ? format(filterMonth, 'yyyy-MM') : undefined)
     }

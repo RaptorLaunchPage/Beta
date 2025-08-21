@@ -56,8 +56,15 @@ export async function GET(request: NextRequest) {
     if (dateParam) {
       query = query.eq('date', dateParam)
     } else {
-      // Default to current date
-      query = query.eq('date', new Date().toISOString().split('T')[0])
+      // Default window: admins/managers see past 14 days; others see today
+      const today = new Date()
+      const start = new Date()
+      start.setDate(start.getDate() - 14)
+      if (checkRoleAccess(user.role, ['admin', 'manager'])) {
+        query = query.gte('date', start.toISOString().split('T')[0]).lte('date', today.toISOString().split('T')[0])
+      } else {
+        query = query.eq('date', today.toISOString().split('T')[0])
+      }
     }
 
     // Apply team filter based on role

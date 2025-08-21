@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useAuthV2 as useAuth } from "@/hooks/use-auth-v2"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ResponsiveTabs, TabsContent } from "@/components/ui/enhanced-tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -19,9 +18,7 @@ import {
   AlertTriangle
 } from "lucide-react"
 import { DashboardPermissions } from "@/lib/dashboard-permissions"
-import DiscordSettingsPage from '@/app/dashboard/discord-portal/settings/page'
-import WebhooksPage from '@/app/dashboard/discord-portal/webhooks/page'
-import DiscordLogsPage from '@/app/dashboard/discord-portal/logs/page'
+// Note: Avoid importing other Next.js page modules here to prevent build issues.
 
 interface CommunicationStats {
   totalMessages: number
@@ -293,11 +290,11 @@ export default function CommunicationPage() {
               Start by setting up webhooks and sending your first Discord notification.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}>
+              <Button onClick={() => window.location.assign('/dashboard/discord-portal/webhooks')}>
                 <Webhook className="h-4 w-4 mr-2" />
                 Go to Webhooks
               </Button>
-              <Button variant="outline" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}>
+              <Button variant="outline" onClick={() => window.location.assign('/dashboard/discord-portal/settings')}>
                 <Settings className="h-4 w-4 mr-2" />
                 Go to Settings
               </Button>
@@ -359,39 +356,24 @@ export default function CommunicationPage() {
           <CardContent>
             <div className="text-2xl font-bold">{webhooks.length}</div>
             <p className="text-xs text-muted-foreground">
-              {webhooks.filter(w => w.active).length} active
+              {webhooks.filter((w: any) => w.active).length} active
             </p>
           </CardContent>
         </Card>
       </div>
       )}  {/* End of stats conditional */}
 
-      {/* Inline Webhooks Section */}
-      <div className="mt-10" id="webhooks">
-        <WebhooksPage />
-      </div>
-
-      {/* Inline Logs Section */}
-      <div className="mt-10" id="logs">
-        <DiscordLogsPage />
-      </div>
-
-      {/* Inline Settings Section */}
-      <div className="mt-10" id="settings">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Portal Settings
-            </CardTitle>
-            <CardDescription>
-              Configure automation, digest schedules, and notification preferences
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DiscordSettingsPage />
-          </CardContent>
-        </Card>
+      {/* Links to sections to avoid importing page modules directly */}
+      <div className="mt-10 flex gap-3">
+        <Button variant="outline" onClick={() => window.location.assign('/dashboard/discord-portal/webhooks')}>
+          Manage Webhooks
+        </Button>
+        <Button variant="outline" onClick={() => window.location.assign('/dashboard/discord-portal/logs')}>
+          View Logs
+        </Button>
+        <Button variant="outline" onClick={() => window.location.assign('/dashboard/discord-portal/settings')}>
+          Portal Settings
+        </Button>
       </div>
       </div>
     </div>

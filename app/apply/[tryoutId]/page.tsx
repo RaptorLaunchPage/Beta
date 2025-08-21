@@ -21,6 +21,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 
+const DISCORD_INVITE = process.env.NEXT_PUBLIC_DISCORD_INVITE || 'https://discord.com/invite/'
+
 export default function TryoutApplicationPage() {
   const params = useParams()
   const { toast } = useToast()
@@ -105,9 +107,17 @@ export default function TryoutApplicationPage() {
                 <p className="text-white/80 mb-4">
                   Thank you for applying to Raptors Main - July 2025. We'll review your application and get back to you soon.
                 </p>
-                <p className="text-sm text-white/60">
-                  Keep an eye on your email and Discord for updates.
-                </p>
+                <p className="text-sm text-white/70">For updates and communication, please join our Discord.</p>
+                <div className="mt-4">
+                  <a
+                    href={DISCORD_INVITE}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center px-5 py-2 rounded-md font-semibold bg-[#5865F2] hover:bg-[#4752C4] text-white"
+                  >
+                    Join our Discord
+                  </a>
+                </div>
               </CardContent>
             </Card>
           </div>

@@ -56,13 +56,13 @@ export default function PublicSitePage() {
               </FadeInOnScroll>
               <FadeInOnScroll delayMs={240}>
                 <div className="flex gap-4 mt-8">
-                  <a href="https://discord.gg/6986Kf3eG4" target="_blank" rel="noreferrer"
-                    className={`px-5 py-2 rounded-md font-semibold ${getButtonStyle('primary')}`}>
+                  <a href="/join-us"
+                    className={`${getButtonStyle('primary')} px-5 py-2 rounded-md font-semibold`}>
                     Join Us
                   </a>
-                  <a href="/highlight"
-                    className={`px-5 py-2 rounded-md font-semibold ${getButtonStyle('outline')}`}>
-                    Watch Highlights
+                  <a href="/incentives"
+                    className={`${getButtonStyle('outline')} px-5 py-2 rounded-md font-semibold`}>
+                    What's Covered
                   </a>
                 </div>
               </FadeInOnScroll>

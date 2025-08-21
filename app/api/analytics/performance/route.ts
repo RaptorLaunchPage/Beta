@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { 
   authenticateRequest, 
   createErrorResponse, 
-  createSuccessResponse, 
+  createWrappedSuccessResponse, 
   checkRoleAccess,
   isValidUuid,
   handleCors
@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
     const timeframe = searchParams.get('timeframe') || '30'
     const teamId = searchParams.get('teamId')
     const playerId = searchParams.get('playerId')
-    const analysisType = searchParams.get('type') || 'overview'
+    const requestedType = (searchParams.get('type') || 'overview').toLowerCase()
+    const analysisType = requestedType === 'comparison' ? 'team' : requestedType
     const limitParam = parseInt(searchParams.get('limit') || '0')
     const limit = limitParam > 0 ? Math.min(limitParam, 1000) : 0
 
@@ -63,8 +64,8 @@ export async function GET(request: NextRequest) {
     let performanceQuery = supabase
       .from('performances')
       .select(
-        analysisType === 'overview' || analysisType === 'team'
-          ? 'kills,damage,survival_time,placement,created_at,player_id,team_id,map'
+        analysisType === 'overview' || analysisType === 'team' || analysisType === 'trends'
+          ? 'kills,damage,survival_time,placement,created_at,player_id,team_id,map, users:player_id(id, name, email), teams:team_id(id, name)'
           : '*, users:player_id(id, name, email), teams:team_id(id, name)'
       )
       .gte('created_at', startDate.toISOString())
@@ -108,27 +109,27 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Calculate analytics based on analysis type
-    let analytics = {}
-    
-    if (analysisType === 'overview') {
-      analytics = calculateOverviewAnalytics(performances || [])
-    } else if (analysisType === 'team') {
-      analytics = calculateTeamAnalytics(performances || [])
-    } else if (analysisType === 'player') {
-      analytics = calculatePlayerAnalytics(performances || [])
+    // Construct UI-friendly data based on requested analysis type
+    const perfArray = performances || []
+
+    if (analysisType === 'player') {
+      const data = buildPlayerSectionData(perfArray)
+      return createWrappedSuccessResponse(data)
     }
 
-    return createSuccessResponse({
-      performances: performances || [],
-      analytics,
-      timeframe: parseInt(timeframe),
-      filters: {
-        teamId,
-        playerId,
-        analysisType
-      }
-    })
+    if (analysisType === 'team') {
+      const data = buildTeamComparisonData(perfArray)
+      return createWrappedSuccessResponse(data)
+    }
+
+    if (analysisType === 'trends') {
+      const data = buildTrendSectionData(perfArray)
+      return createWrappedSuccessResponse(data)
+    }
+
+    // Default overview fallback
+    const overview = calculateOverviewAnalytics(perfArray)
+    return createWrappedSuccessResponse(overview)
 
   } catch (error) {
     console.error('Error in analytics API:', error)
@@ -288,5 +289,255 @@ function calculatePlayerAnalytics(performances: any[]) {
   return {
     playerStats: Object.fromEntries(playerStats),
     playerRankings
+  }
+}
+
+// Builders to match UI expectations
+function buildPlayerSectionData(performances: any[]) {
+  // Aggregate player-level stats
+  const totalMatches = performances.length
+  const totalKills = performances.reduce((s, p) => s + (p.kills || 0), 0)
+  const totalDamage = performances.reduce((s, p) => s + (p.damage || 0), 0)
+  const totalPlacement = performances.reduce((s, p) => s + (p.placement || 0), 0)
+
+  const playerStats = {
+    totalMatches,
+    avgKills: totalMatches ? +(totalKills / totalMatches).toFixed(2) : 0,
+    avgDamage: totalMatches ? Math.round(totalDamage / totalMatches) : 0,
+    avgPlacement: totalMatches ? Math.round(totalPlacement / totalMatches) : 0
+  }
+
+  // Radar data example
+  const radarData = [
+    { metric: 'Kills', value: playerStats.avgKills },
+    { metric: 'Damage', value: playerStats.avgDamage / 100 },
+    { metric: 'Placement', value: Math.max(0, 10 - playerStats.avgPlacement) }
+  ]
+
+  // Performance trend (last 10)
+  const performanceTrend = performances.slice(0, 10).map((p, idx) => ({
+    match: `#${performances.length - idx}`,
+    kills: p.kills || 0,
+    damage: p.damage || 0,
+    placement: p.placement || 0,
+    assists: p.assists || 0,
+    survival: Math.round((p.survival_time || 0) / 60)
+  })).reverse()
+
+  // Player options (for staff views)
+  const playersMap = new Map<string, any>()
+  performances.forEach(p => {
+    const id = p.player_id
+    const name = p.users?.name || p.users?.email || 'Player'
+    if (!id) return
+    if (!playersMap.has(id)) playersMap.set(id, { id, name })
+  })
+  const topPerformers = { players: Array.from(playersMap.values()) }
+
+  // AI-style insights (detailed + suggestions embedded in description)
+  const insights: Array<{ category: string; title: string; description: string }> = []
+
+  if (totalMatches > 0) {
+    // Overall average-based insight
+    const kdDescriptor = playerStats.avgKills >= 5 ? 'High Kill Rate' : playerStats.avgKills >= 3 ? 'Solid Kill Output' : 'Developing Kill Rate'
+    insights.push({
+      category: 'overview',
+      title: kdDescriptor,
+      description: `Averaging ${playerStats.avgKills} kills and ${playerStats.avgDamage} damage per match across ${totalMatches} matches. Suggestions: \n• Continue building on strengths by preserving late-game utility if avg placement ≤ ${playerStats.avgPlacement}. \n• If damage >> kills in individual games, prioritize finish-secure drills (grenade usage and better team focus fire).`
+    })
+
+    // Recent trend: last 5 vs previous 5
+    const lastFive = performances.slice(0, 5)
+    const prevFive = performances.slice(5, 10)
+    if (lastFive.length > 0 && prevFive.length > 0) {
+      const lastFiveAvg = +(lastFive.reduce((s, p) => s + (p.kills || 0), 0) / lastFive.length).toFixed(2)
+      const prevFiveAvg = +(prevFive.reduce((s, p) => s + (p.kills || 0), 0) / prevFive.length).toFixed(2)
+      const diff = +(lastFiveAvg - prevFiveAvg).toFixed(2)
+      insights.push({
+        category: 'trend',
+        title: diff >= 0 ? 'Improving Recent Form' : 'Recent Dip in Kills',
+        description: `${diff >= 0 ? '+' : ''}${diff} avg kills vs previous 5 matches. Suggestions: \n• ${diff >= 0 ? 'Maintain current routines; add VOD notes to lock patterns that worked.' : 'Review early-game fights and rotations in VODs; adjust drop spots or 3rd-party timings.'} \n• Run micro-aim routine (10–15 min) pre-scrim to stabilize crosshair placement.`
+      })
+    }
+
+    // Best map by average kills
+    const mapAgg = new Map<string, { kills: number; matches: number }>()
+    performances.forEach(p => {
+      const m = p.map || 'Unknown'
+      const e = mapAgg.get(m) || { kills: 0, matches: 0 }
+      e.kills += p.kills || 0
+      e.matches += 1
+      mapAgg.set(m, e)
+    })
+    const bestMap = Array.from(mapAgg.entries())
+      .map(([map, v]) => ({ map, avg: v.kills / Math.max(1, v.matches) }))
+      .sort((a, b) => b.avg - a.avg)[0]
+    if (bestMap) {
+      insights.push({
+        category: 'map',
+        title: 'Best Performing Map',
+        description: `${bestMap.map} with ${(bestMap.avg).toFixed(2)} avg kills. Suggestions: \n• Queue more scrims on ${bestMap.map} to consolidate strengths. \n• Prepare two backup rotations to avoid predictable routes when contested.`
+      })
+    }
+
+    // Worst placement indicator
+    const placements = performances.map(p => p.placement || 0).filter(n => n > 0)
+    if (placements.length > 0) {
+      const avgPlacement = placements.reduce((a, b) => a + b, 0) / placements.length
+      if (avgPlacement > 8) {
+        insights.push({
+          category: 'placement',
+          title: 'Low Average Placement',
+          description: `Average placement ${avgPlacement.toFixed(0)} suggests mid/late-game survivability gaps. Suggestions: \n• Prioritize edge-to-center timing; avoid mid-transition open fields. \n• Keep one utility slot reserved for end-game (smokes/molotovs). \n• Establish clear IGL calls for disengage vs commit in 3rd parties.`
+        })
+      }
+    }
+  }
+
+  // Recent matches
+  const recentMatches = performanceTrend
+
+  return {
+    playerStats,
+    radarData,
+    performanceTrend,
+    topPerformers,
+    insights,
+    recentMatches
+  }
+}
+
+function buildTeamComparisonData(performances: any[]) {
+  const teamAgg = new Map<string, any>()
+  performances.forEach(p => {
+    if (!p.team_id) return
+    const key = p.team_id
+    if (!teamAgg.has(key)) {
+      teamAgg.set(key, {
+        teamId: key,
+        teamName: p.teams?.name || 'Team',
+        matches: 0,
+        totalKills: 0,
+        totalDamage: 0,
+        wins: 0,
+        placements: 0
+      })
+    }
+    const a = teamAgg.get(key)
+    a.matches += 1
+    a.totalKills += p.kills || 0
+    a.totalDamage += p.damage || 0
+    a.wins += (p.placement === 1 ? 1 : 0)
+    a.placements += p.placement || 0
+  })
+
+  const teamComparison = Array.from(teamAgg.values()).map(a => ({
+    teamId: a.teamId,
+    teamName: a.teamName,
+    matches: a.matches,
+    avgKills: +(a.totalKills / Math.max(1, a.matches)).toFixed(2),
+    avgDamage: Math.round(a.totalDamage / Math.max(1, a.matches)),
+    winRate: +((a.wins / Math.max(1, a.matches)) * 100).toFixed(1),
+    avgPlacement: Math.round(a.placements / Math.max(1, a.matches))
+  }))
+
+  // Top performers across teams
+  const mostKills = [...teamComparison].sort((a, b) => b.avgKills - a.avgKills)[0]
+  const mostDamage = [...teamComparison].sort((a, b) => b.avgDamage - a.avgDamage)[0]
+  const bestWinRate = [...teamComparison].sort((a, b) => b.winRate - a.winRate)[0]
+
+  const topPerformers = {
+    mostKills,
+    mostDamage,
+    bestWinRate
+  }
+
+  // Insights for teams (detailed)
+  const insights: Array<{ category: string; title: string; description: string }> = []
+  if (mostKills) {
+    insights.push({
+      category: 'kills',
+      title: 'Top Team by Avg Kills',
+      description: `${mostKills.teamName}: ${mostKills.avgKills} avg kills per match. Suggestions: \n• Share comms/VOD snippets of their opener patterns and timing. \n• Emulate their isolation strategy for 2v1s and quick trades.`
+    })
+  }
+  if (mostDamage) {
+    insights.push({
+      category: 'damage',
+      title: 'Highest Avg Damage Team',
+      description: `${mostDamage.teamName}: ${mostDamage.avgDamage} avg damage. Suggestions: \n• If kills trail damage, drill finish-secure (nade timings, wide-swing sync). \n• Rotate faster to convert knocks before revives.`
+    })
+  }
+  if (bestWinRate) {
+    insights.push({
+      category: 'winrate',
+      title: 'Best Win Rate',
+      description: `${bestWinRate.teamName}: ${bestWinRate.winRate}% win rate. Suggestions: \n• Study their late-game spacing and smoke layering. \n• Borrow their risk threshold for taking or skipping mid-zone fights.`
+    })
+  }
+
+  // Identify team needing focus (lowest avg kills or highest avg placement)
+  const needFocus = [...teamComparison].sort((a, b) => a.avgKills - b.avgKills)[0]
+  if (needFocus) {
+    insights.push({
+      category: 'focus',
+      title: 'Team Needs Support',
+      description: `${needFocus.teamName} has the lowest avg kills (${needFocus.avgKills}). Suggestions: \n• Schedule targeted scrims vs comparable opponents. \n• Assign aim drills and comm review; limit risky splits until stability improves.`
+    })
+  }
+
+  return {
+    topPerformers,
+    teamComparison,
+    insights
+  }
+}
+
+function buildTrendSectionData(performances: any[]) {
+  // Group by date
+  const dayMap = new Map<string, { kills: number; matches: number }>()
+  performances.forEach(p => {
+    const d = new Date(p.created_at)
+    const key = d.toISOString().split('T')[0]
+    const entry = dayMap.get(key) || { kills: 0, matches: 0 }
+    entry.kills += p.kills || 0
+    entry.matches += 1
+    dayMap.set(key, entry)
+  })
+
+  const days = Array.from(dayMap.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  const trendData = days.map(([date, v]) => ({ date, avgKills: +(v.kills / Math.max(1, v.matches)).toFixed(2) }))
+
+  const summary = {
+    totalDays: days.length,
+    bestDay: days.sort((a, b) => (b[1].kills / Math.max(1, b[1].matches)) - (a[1].kills / Math.max(1, a[1].matches)))[0]
+      ? { date: days[0][0], avgKills: +(days[0][1].kills / Math.max(1, days[0][1].matches)).toFixed(2) }
+      : null,
+    improvements: {
+      kills: trendData.length > 1 ? +(trendData[trendData.length - 1].avgKills - trendData[0].avgKills).toFixed(2) : 0
+    }
+  }
+
+  const insights: Array<{ category: string; title: string; description: string }> = []
+  if (trendData.length > 1) {
+    const diff = +(trendData[trendData.length - 1].avgKills - trendData[0].avgKills).toFixed(2)
+    insights.push({
+      category: 'trend',
+      title: diff >= 0 ? 'Positive Kill Trend' : 'Negative Kill Trend',
+      description: `${diff >= 0 ? '+' : ''}${diff} avg kills over the selected period. Suggestions: \n• ${diff >= 0 ? 'Add structured post-scrim VOD checklist; preserve routines that correlate with upticks.' : 'Audit first 8 minutes for over-fighting; add one safer macro route on poor days.'}`
+    })
+  }
+  if (summary.bestDay) {
+    insights.push({
+      category: 'best-day',
+      title: 'Best Day Identified',
+      description: `${summary.bestDay.date} with ${summary.bestDay.avgKills} avg kills. Suggestions: \n• Replicate scrim schedule and warmup routine used on that day for the next block.`
+    })
+  }
+
+  return {
+    summary,
+    trendData,
+    insights
   }
 }
