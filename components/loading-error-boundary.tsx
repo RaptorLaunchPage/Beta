@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { VideoBackground } from '@/components/video-background'
 import { RefreshCw, AlertTriangle, Home } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface LoadingErrorBoundaryState {
   hasError: boolean
@@ -24,7 +25,7 @@ export class LoadingErrorBoundary extends React.Component<
 > {
   constructor(props: LoadingErrorBoundaryProps) {
     super(props)
-    this.state = { hasError: false }
+    this.state = { hasError: false, error: null }
   }
 
   static getDerivedStateFromError(error: Error): LoadingErrorBoundaryState {
@@ -60,7 +61,7 @@ export class LoadingErrorBoundary extends React.Component<
 
   handleGoHome = () => {
     if (typeof window !== 'undefined') {
-      window.location.href = '/'
+      router.push('/')
     }
   }
 
@@ -141,23 +142,4 @@ export class LoadingErrorBoundary extends React.Component<
 
     return this.props.children
   }
-}
-
-// Hook to handle loading timeouts
-export function useLoadingTimeout(timeoutMs: number = 15000) {
-  const [hasTimedOut, setHasTimedOut] = React.useState(false)
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setHasTimedOut(true)
-    }, timeoutMs)
-
-    return () => clearTimeout(timer)
-  }, [timeoutMs])
-
-  const resetTimeout = React.useCallback(() => {
-    setHasTimedOut(false)
-  }, [])
-
-  return { hasTimedOut, resetTimeout }
 }

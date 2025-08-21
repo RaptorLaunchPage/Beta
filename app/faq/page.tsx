@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { motion } from "framer-motion"
 import { getButtonStyle } from "@/lib/global-theme"
 import Head from "next/head"
+import Link from "next/link"
 
 // Configurable: allow multiple FAQ items open at once
 const ALLOW_MULTIPLE_OPEN = true
@@ -608,8 +609,8 @@ export default function FAQPage() {
                 <CardContent className="text-white/80 space-y-3">
                   <p>If you can’t find what you’re looking for, our team is here to help.</p>
                   <div className="flex gap-3">
-                    <a href="/contact" className={`px-4 py-2 rounded-md text-sm font-semibold ${getButtonStyle('primary')}`}>Contact Us</a>
-                    <a href="/join-us" className={`px-4 py-2 rounded-md text-sm font-semibold ${getButtonStyle('outline')}`}>Apply</a>
+                    <Link href="/contact" className={`px-4 py-2 rounded-md text-sm font-semibold ${getButtonStyle('primary')}`}>Contact Us</Link>
+                    <Link href="/join-us" className={`px-4 py-2 rounded-md text-sm font-semibold ${getButtonStyle('outline')}`}>Apply</Link>
                   </div>
                 </CardContent>
               </Card>

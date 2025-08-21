@@ -14,6 +14,7 @@ import {
   Copy
 } from 'lucide-react'
 import { GLOBAL_THEME } from '@/lib/global-theme'
+import { useRouter } from 'next/navigation'
 
 interface Props {
   children: ReactNode
@@ -76,7 +77,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleGoHome = () => {
-    window.location.href = '/dashboard'
+    const router = useRouter()
+    router.push('/dashboard')
   }
 
   private handleCopyError = async () => {

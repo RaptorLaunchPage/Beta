@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase"
 import { PublicNavigation } from "@/components/public/PublicNavigation"
 import { PublicFooter } from "@/components/public/PublicFooter"
 import { getButtonStyle } from "@/lib/global-theme"
+import Link from "next/link"
 
 export default function PublicSitePage() {
   const [teamsCount, setTeamsCount] = useState<number>(0)
@@ -56,14 +57,14 @@ export default function PublicSitePage() {
               </FadeInOnScroll>
               <FadeInOnScroll delayMs={240}>
                 <div className="flex gap-4 mt-8">
-                  <a href="/join-us"
+                  <Link href="/join-us"
                     className={`${getButtonStyle('primary')} px-5 py-2 rounded-md font-semibold`}>
                     Join Us
-                  </a>
-                  <a href="/incentives"
+                  </Link>
+                  <Link href="/incentives"
                     className={`${getButtonStyle('outline')} px-5 py-2 rounded-md font-semibold`}>
                     What's Covered
-                  </a>
+                  </Link>
                 </div>
               </FadeInOnScroll>
             </div>

@@ -34,6 +34,7 @@ import {
   TeamAnalyticsSection,
   TrendAnalyticsSection
 } from '@/components/analytics/analytics-sections'
+import Link from 'next/link'
 
 interface AnalyticsStats {
   totalMatches: number
@@ -506,10 +507,10 @@ export default function AnalyticsPage() {
                     : "Start by adding some performance data to see analytics and insights."}
                 </p>
                 <Button asChild>
-                  <a href="/dashboard/performance">
+                  <Link href="/dashboard/performance">
                     <Target className="h-4 w-4 mr-2" />
                     Add Performance Data
-                  </a>
+                  </Link>
                 </Button>
               </CardContent>
             </Card>

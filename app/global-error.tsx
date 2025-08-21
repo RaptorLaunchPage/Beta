@@ -5,6 +5,7 @@ import { VideoBackground } from "@/components/video-background"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skull, RefreshCw, Home, AlertCircle } from "lucide-react"
+import { useRouter } from 'next/navigation'
 
 export default function GlobalError({
   error,
@@ -13,6 +14,7 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const router = useRouter()
   useEffect(() => {
     // Log the error to an error reporting service
     console.error('Critical global error:', error)
@@ -83,7 +85,7 @@ export default function GlobalError({
                 </Button>
                 
                 <Button 
-                  onClick={() => window.location.href = '/'}
+                  onClick={() => router.push('/')}
                   variant="outline"
                   size="lg"
                   className="border-red-500/40 text-red-200 hover:bg-red-500/20 font-medium"

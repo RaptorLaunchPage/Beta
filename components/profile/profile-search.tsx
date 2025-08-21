@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useAuthV2 as useAuth } from '@/hooks/use-auth-v2'
+import { useRouter } from 'next/navigation'
 
 interface ProfileSearchProps {
   onSelectProfile: (profile: UserProfile) => void
@@ -49,6 +50,7 @@ interface SearchResult {
 }
 
 export function ProfileSearch() {
+  const router = useRouter()
   const { toast } = useToast()
   const { getToken, profile: currentProfile } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
@@ -308,7 +310,7 @@ export function ProfileSearch() {
                         variant="outline"
                         onClick={() => {
                           // Navigate to profile view without causing auth redirects
-                          window.location.href = `/dashboard/profile?user=${profile.id}`
+                          router.push(`/dashboard/profile?user=${profile.id}`)
                         }}
                       >
                         <Eye className="h-4 w-4 mr-1" />
@@ -320,7 +322,7 @@ export function ProfileSearch() {
                         variant="ghost"
                         onClick={() => {
                           // Navigate to profile edit without causing auth redirects
-                          window.location.href = `/dashboard/profile?user=${profile.id}&tab=personal`
+                          router.push(`/dashboard/profile?user=${profile.id}&tab=personal`)
                         }}
                       >
                         <Edit className="h-4 w-4 mr-1" />
