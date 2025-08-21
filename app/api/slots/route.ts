@@ -256,21 +256,7 @@ export async function POST(request: Request) {
       })
     }
 
-    // Create corresponding slot expense entry
-    if (slot && slot.slot_rate > 0) {
-      const { error: expenseError } = await supabase
-        .from('slot_expenses')
-        .insert({
-          slot_id: slot.id,
-          team_id: slot.team_id,
-          rate: slot.slot_rate,
-          total: slot.slot_rate * slot.number_of_slots
-        })
-
-      if (expenseError) {
-        console.warn('Failed to create slot expense entry:', expenseError)
-      }
-    }
+    // Expense creation is handled by DB trigger public.create_slot_expense()
 
     // Send Discord notification if enabled
     try {

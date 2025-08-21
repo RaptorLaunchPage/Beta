@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { ResponsiveTabs, TabsContent } from '@/components/ui/enhanced-tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RoleBasedDashboard } from '@/components/dashboard/role-based-dashboard'
+import { useRouter } from 'next/navigation'
 import { 
   Users, 
   Target, 
@@ -113,6 +114,7 @@ interface QuickAction {
 
 export default function OptimizedDashboardPage() {
   const { profile, user, getToken } = useAuth()
+  const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [topPerformers, setTopPerformers] = useState<{
     topTeam: TeamPerformance | null
@@ -1026,7 +1028,7 @@ export default function OptimizedDashboardPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Card className="bg-black/40 backdrop-blur-lg border border-blue-400/40 hover:border-blue-400/60 transition-all duration-200 cursor-pointer group">
                   <CardContent className="p-6">
-                    <div className="flex items-center gap-4" onClick={() => window.location.href = '/dashboard/performance'}>
+                    <div className="flex items-center gap-4" onClick={() => router.push('/dashboard/performance')}>
                       <div className="p-3 rounded-lg bg-blue-500/20 group-hover:bg-blue-500/30 transition-colors">
                         <Target className="h-6 w-6 text-blue-400" />
                       </div>
@@ -1045,7 +1047,7 @@ export default function OptimizedDashboardPage() {
 
                 <Card className="bg-black/40 backdrop-blur-lg border border-green-400/40 hover:border-green-400/60 transition-all duration-200 cursor-pointer group">
                   <CardContent className="p-6">
-                    <div className="flex items-center gap-4" onClick={() => window.location.href = '/dashboard/attendance'}>
+                    <div className="flex items-center gap-4" onClick={() => router.push('/dashboard/attendance')}>
                       <div className="p-3 rounded-lg bg-green-500/20 group-hover:bg-green-500/30 transition-colors">
                         <Calendar className="h-6 w-6 text-green-400" />
                       </div>
@@ -1064,7 +1066,7 @@ export default function OptimizedDashboardPage() {
 
                 <Card className="bg-black/40 backdrop-blur-lg border border-purple-400/40 hover:border-purple-400/60 transition-all duration-200 cursor-pointer group">
                   <CardContent className="p-6">
-                    <div className="flex items-center gap-4" onClick={() => window.location.href = '/dashboard/profile'}>
+                    <div className="flex items-center gap-4" onClick={() => router.push('/dashboard/profile')}>
                       <div className="p-3 rounded-lg bg-purple-500/20 group-hover:bg-purple-500/30 transition-colors">
                         <User className="h-6 w-6 text-purple-400" />
                       </div>
