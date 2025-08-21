@@ -324,20 +324,20 @@ export default function RosterPage() {
                     <TableHead>In-Game Role</TableHead>
                     <TableHead>Contact Info</TableHead>
                     <TableHead>Device Info</TableHead>
-                    {canEditSelectedTeam && !isAnalyst && <TableHead>Actions</TableHead>}
+                    {canEditSelectedTeam && !isAnalyst && <TableHead className="whitespace-nowrap">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {roster.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell className="font-medium">{entry.user?.name || entry.user?.email}</TableCell>
-                      <TableCell>{entry.user?.email}</TableCell>
+                      <TableCell className="font-medium max-w-[140px] sm:max-w-none truncate">{entry.user?.name || entry.user?.email}</TableCell>
+                      <TableCell className="max-w-[180px] sm:max-w-none truncate font-mono text-xs sm:text-sm">{entry.user?.email}</TableCell>
                       <TableCell>{entry.in_game_role || "N/A"}</TableCell>
-                      <TableCell>{entry.contact_number || "N/A"}</TableCell>
-                      <TableCell>{entry.device_info || "N/A"}</TableCell>
+                      <TableCell className="whitespace-nowrap">{entry.contact_number || "N/A"}</TableCell>
+                      <TableCell className="max-w-[220px] sm:max-w-none truncate">{entry.device_info || "N/A"}</TableCell>
                       {canEditSelectedTeam && !isAnalyst && (
-                        <TableCell>
-                          <div className="flex gap-2">
+                        <TableCell className="whitespace-nowrap text-right sm:text-left">
+                          <div className="inline-flex gap-2">
                             <Button size="sm" variant="outline" onClick={() => startEditing(entry)}>
                               <Edit className="h-4 w-4" />
                             </Button>

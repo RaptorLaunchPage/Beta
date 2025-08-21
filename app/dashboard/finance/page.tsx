@@ -1031,12 +1031,12 @@ export default function FinancePage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
+                    <TableHead className="whitespace-nowrap">Date</TableHead>
                     <TableHead>Team</TableHead>
                     <TableHead>Organizer</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Description</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1053,15 +1053,15 @@ export default function FinancePage() {
                   ) : (
                     filteredExpenses.map((expense) => (
                       <TableRow key={expense.id}>
-                        <TableCell>
+                        <TableCell className="whitespace-nowrap">
                           {expense.slot?.date || new Date(expense.created_at || '').toLocaleDateString()}
                         </TableCell>
-                        <TableCell>{expense.team?.name || 'Unknown Team'}</TableCell>
-                        <TableCell>{expense.slot?.organizer || 'Unknown'}</TableCell>
+                        <TableCell className="max-w-[140px] sm:max-w-none truncate">{expense.team?.name || 'Unknown Team'}</TableCell>
+                        <TableCell className="max-w-[160px] sm:max-w-none truncate">{expense.slot?.organizer || 'Unknown'}</TableCell>
                         <TableCell>₹{(expense.total || 0).toLocaleString()}</TableCell>
-                        <TableCell>{expense.slot?.notes || '-'}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
+                        <TableCell className="max-w-[180px] sm:max-w-none truncate">{expense.slot?.notes || '-'}</TableCell>
+                        <TableCell className="whitespace-nowrap text-right sm:text-left">
+                          <div className="inline-flex gap-2">
                             {financePermissions.canDelete && (
                               <Button
                                 size="sm"
@@ -1187,12 +1187,12 @@ export default function FinancePage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
+                    <TableHead className="whitespace-nowrap">Date</TableHead>
                     <TableHead>Team</TableHead>
                     <TableHead>Tournament</TableHead>
                     <TableHead>Position</TableHead>
                     <TableHead>Prize Money</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1209,11 +1209,11 @@ export default function FinancePage() {
                   ) : (
                     filteredWinnings.map((winning) => (
                       <TableRow key={winning.id}>
-                        <TableCell>
+                        <TableCell className="whitespace-nowrap">
                           {winning.slot?.date || new Date(winning.created_at || '').toLocaleDateString()}
                         </TableCell>
-                        <TableCell>{winning.team?.name || 'Unknown Team'}</TableCell>
-                        <TableCell>{winning.slot?.organizer || 'Unknown Tournament'}</TableCell>
+                        <TableCell className="max-w-[140px] sm:max-w-none truncate">{winning.team?.name || 'Unknown Team'}</TableCell>
+                        <TableCell className="max-w-[160px] sm:max-w-none truncate">{winning.slot?.organizer || 'Unknown Tournament'}</TableCell>
                         <TableCell>
                           <Badge variant={winning.position === 1 ? "default" : "outline"}>
                             {winning.position === 1 ? "🥇" : winning.position === 2 ? "🥈" : winning.position === 3 ? "🥉" : `#${winning.position}`} 
@@ -1222,8 +1222,8 @@ export default function FinancePage() {
                           </Badge>
                         </TableCell>
                         <TableCell>₹{(winning.amount_won || 0).toLocaleString()}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
+                        <TableCell className="whitespace-nowrap text-right sm:text-left">
+                          <div className="inline-flex gap-2">
                             {financePermissions.canDelete && (
                               <Button
                                 size="sm"

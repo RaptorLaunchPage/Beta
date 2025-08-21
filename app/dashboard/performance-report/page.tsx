@@ -540,7 +540,7 @@ export default function PerformanceReportPage() {
                     <TableHead>Player</TableHead>
                     <TableHead>Team</TableHead>
                     <TableHead>Organizer</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead className="whitespace-nowrap">Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -557,10 +557,10 @@ export default function PerformanceReportPage() {
                       <TableCell>{performance.assists}</TableCell>
                       <TableCell>{performance.damage.toLocaleString()}</TableCell>
                       <TableCell>{Math.round(performance.survival_time)}s</TableCell>
-                      <TableCell>{performance.player_name}</TableCell>
-                      <TableCell>{performance.team_name}</TableCell>
-                      <TableCell>{performance.organizer}</TableCell>
-                      <TableCell>{format(new Date(performance.created_at), 'MMM dd, yyyy')}</TableCell>
+                      <TableCell className="max-w-[140px] sm:max-w-none truncate">{performance.player_name}</TableCell>
+                      <TableCell className="max-w-[140px] sm:max-w-none truncate">{performance.team_name}</TableCell>
+                      <TableCell className="max-w-[160px] sm:max-w-none truncate">{performance.organizer}</TableCell>
+                      <TableCell className="whitespace-nowrap">{format(new Date(performance.created_at), 'MMM dd, yyyy')}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

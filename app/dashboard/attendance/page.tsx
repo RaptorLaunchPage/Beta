@@ -196,6 +196,15 @@ export default function AttendancePage() {
   return (
     <div className="min-h-screen p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
+        {(['coach','analyst','player'].includes((profile?.role || '').toLowerCase()) && !profile?.team_id) && (
+          <Card className="bg-amber-500/10 border-amber-500/30">
+            <CardContent className="p-4">
+              <div className="text-sm text-amber-800">
+                No team is assigned to your profile yet. Some attendance and session data may be empty. Please contact an administrator to be added to a team.
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>

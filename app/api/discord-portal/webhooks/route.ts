@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { 
-  getAllWebhooks, 
-  getTeamWebhooks, 
-  createWebhook, 
-  updateWebhook, 
-  deleteWebhook,
-  validateWebhookUrl
-} from '@/modules/discord-portal'
+import { validateWebhookUrl } from '@/modules/discord-portal'
 import type { DiscordWebhookInsert } from '@/modules/discord-portal'
 
-// Initialize Supabase client
+// Initialize Supabase env
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -18,13 +11,20 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Missing Supabase environment variables during build')
 }
 
-const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null
+function getUserClient(request: NextRequest) {
+  if (!supabaseUrl || !supabaseAnonKey) return null
+  const authHeader = request.headers.get('authorization')
+  if (!authHeader) return null
+  const token = authHeader.replace('Bearer ', '')
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } }
+  })
+}
 
 // Helper function to get user from request
 async function getUserFromRequest(request: NextRequest) {
-  if (!supabase) {
+  const userClient = getUserClient(request)
+  if (!userClient) {
     return { error: 'Service unavailable', status: 503 }
   }
 
@@ -34,12 +34,12 @@ async function getUserFromRequest(request: NextRequest) {
   }
 
   const token = authHeader.replace('Bearer ', '')
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  const { data: { user }, error: authError } = await userClient.auth.getUser(token)
   if (authError || !user) {
     return { error: 'Invalid token', status: 401 }
   }
 
-  const { data: userData, error: userError } = await supabase
+  const { data: userData, error: userError } = await userClient
     .from('users')
     .select('id, role, team_id')
     .eq('id', user.id)
@@ -49,20 +49,19 @@ async function getUserFromRequest(request: NextRequest) {
     return { error: 'User not found', status: 404 }
   }
 
-  return { userData }
+  return { userData, userClient }
 }
 
 // GET - Fetch webhooks
 export async function GET(request: NextRequest) {
   try {
-    if (!supabase) {
+    const { userData, userClient, error, status } = await getUserFromRequest(request)
+    if (!userClient) {
       return NextResponse.json(
         { error: 'Service unavailable' },
         { status: 503 }
       )
     }
-
-    const { userData, error, status } = await getUserFromRequest(request)
     if (error) {
       return NextResponse.json({ error }, { status })
     }
@@ -74,11 +73,20 @@ export async function GET(request: NextRequest) {
     if (userData!.role === 'admin') {
       // Admin can view all webhooks or filter by team
       if (teamId) {
-        const webhooks = await getTeamWebhooks(teamId)
-        return NextResponse.json({ webhooks })
+        const { data, error } = await userClient
+          .from('discord_webhooks')
+          .select(`*, teams:team_id(name)`)        
+          .eq('team_id', teamId)
+          .order('created_at', { ascending: false })
+        if (error) throw error
+        return NextResponse.json({ webhooks: data || [] })
       } else {
-        const webhooks = await getAllWebhooks()
-        return NextResponse.json({ webhooks })
+        const { data, error } = await userClient
+          .from('discord_webhooks')
+          .select(`*, teams:team_id(name)`)        
+          .order('created_at', { ascending: false })
+        if (error) throw error
+        return NextResponse.json({ webhooks: data || [] })
       }
     } else if (userData!.role === 'manager') {
       // Managers can view webhooks
@@ -91,16 +99,30 @@ export async function GET(request: NextRequest) {
             { status: 403 }
           )
         }
-        const webhooks = await getTeamWebhooks(userData!.team_id)
-        return NextResponse.json({ webhooks })
+        const { data, error } = await userClient
+          .from('discord_webhooks')
+          .select(`*, teams:team_id(name)`)        
+          .eq('team_id', userData!.team_id)
+          .order('created_at', { ascending: false })
+        if (error) throw error
+        return NextResponse.json({ webhooks: data || [] })
       } else {
         // Manager without team assignment - can view all webhooks like admin
         if (teamId) {
-          const webhooks = await getTeamWebhooks(teamId)
-          return NextResponse.json({ webhooks })
+          const { data, error } = await userClient
+            .from('discord_webhooks')
+            .select(`*, teams:team_id(name)`)        
+            .eq('team_id', teamId)
+            .order('created_at', { ascending: false })
+          if (error) throw error
+          return NextResponse.json({ webhooks: data || [] })
         } else {
-          const webhooks = await getAllWebhooks()
-          return NextResponse.json({ webhooks })
+          const { data, error } = await userClient
+            .from('discord_webhooks')
+            .select(`*, teams:team_id(name)`)        
+            .order('created_at', { ascending: false })
+          if (error) throw error
+          return NextResponse.json({ webhooks: data || [] })
         }
       }
     } else {
@@ -122,14 +144,13 @@ export async function GET(request: NextRequest) {
 // POST - Create webhook
 export async function POST(request: NextRequest) {
   try {
-    if (!supabase) {
+    const { userData, userClient, error, status } = await getUserFromRequest(request)
+    if (!userClient) {
       return NextResponse.json(
         { error: 'Service unavailable' },
         { status: 503 }
       )
     }
-
-    const { userData, error, status } = await getUserFromRequest(request)
     if (error) {
       return NextResponse.json({ error }, { status })
     }
@@ -182,19 +203,17 @@ export async function POST(request: NextRequest) {
       created_by: userData!.id
     }
 
-    const result = await createWebhook(webhookData)
+    const { data, error: insertError } = await userClient
+      .from('discord_webhooks')
+      .insert(webhookData)
+      .select('*')
+      .single()
 
-    if (result.success) {
-      return NextResponse.json({
-        success: true,
-        webhook: result.webhook
-      })
-    } else {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 400 }
-      )
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 400 })
     }
+
+    return NextResponse.json({ success: true, webhook: data })
 
   } catch (error) {
     console.error('Error creating webhook:', error)
@@ -208,14 +227,13 @@ export async function POST(request: NextRequest) {
 // PUT - Update webhook
 export async function PUT(request: NextRequest) {
   try {
-    if (!supabase) {
+    const { userData, userClient, error, status } = await getUserFromRequest(request)
+    if (!userClient) {
       return NextResponse.json(
         { error: 'Service unavailable' },
         { status: 503 }
       )
     }
-
-    const { userData, error, status } = await getUserFromRequest(request)
     if (error) {
       return NextResponse.json({ error }, { status })
     }
@@ -230,7 +248,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Get the existing webhook to check permissions
-    const { data: existingWebhook, error: fetchError } = await supabase
+    const { data: existingWebhook, error: fetchError } = await userClient
       .from('discord_webhooks')
       .select('*')
       .eq('id', id)
@@ -254,19 +272,26 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    const result = await updateWebhook(id, updates)
-
-    if (result.success) {
-      return NextResponse.json({
-        success: true,
-        webhook: result.webhook
-      })
-    } else {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 400 }
-      )
+    // If updating the URL, validate it first
+    if (updates.hook_url) {
+      const validation = await validateWebhookUrl(updates.hook_url)
+      if (!validation.valid) {
+        return NextResponse.json({ error: validation.error }, { status: 400 })
+      }
     }
+
+    const { data, error: updateError } = await userClient
+      .from('discord_webhooks')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('*')
+      .single()
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 400 })
+    }
+
+    return NextResponse.json({ success: true, webhook: data })
 
   } catch (error) {
     console.error('Error updating webhook:', error)
@@ -280,14 +305,13 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete webhook
 export async function DELETE(request: NextRequest) {
   try {
-    if (!supabase) {
+    const { userData, userClient, error, status } = await getUserFromRequest(request)
+    if (!userClient) {
       return NextResponse.json(
         { error: 'Service unavailable' },
         { status: 503 }
       )
     }
-
-    const { userData, error, status } = await getUserFromRequest(request)
     if (error) {
       return NextResponse.json({ error }, { status })
     }
@@ -303,7 +327,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Get the existing webhook to check permissions
-    const { data: existingWebhook, error: fetchError } = await supabase
+    const { data: existingWebhook, error: fetchError } = await userClient
       .from('discord_webhooks')
       .select('*')
       .eq('id', id)
@@ -327,16 +351,16 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const result = await deleteWebhook(id)
+    const { error: delError } = await userClient
+      .from('discord_webhooks')
+      .delete()
+      .eq('id', id)
 
-    if (result.success) {
-      return NextResponse.json({ success: true })
-    } else {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 400 }
-      )
+    if (delError) {
+      return NextResponse.json({ error: delError.message }, { status: 400 })
     }
+
+    return NextResponse.json({ success: true })
 
   } catch (error) {
     console.error('Error deleting webhook:', error)

@@ -1,65 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables during build')
-}
-
-// Helper function to get user from request
-async function getUserFromRequest(request: NextRequest) {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return { error: 'Service unavailable', status: 503 }
-  }
-
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader) {
-    return { error: 'Authorization header required', status: 401 }
-  }
-
-  const token = authHeader.replace('Bearer ', '')
-  
-  const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }
-  })
-
-  const { data: { user }, error: authError } = await userSupabase.auth.getUser(token)
-  if (authError || !user) {
-    return { error: 'Invalid token', status: 401 }
-  }
-
-  const { data: userData, error: userError } = await userSupabase
-    .from('users')
-    .select('id, role, team_id')
-    .eq('id', user.id)
-    .single()
-
-  if (userError || !userData) {
-    return { error: 'User not found', status: 404 }
-  }
-
-  return { userData, userSupabase }
-}
+import { 
+  authenticateRequest, 
+  createErrorResponse, 
+  createSuccessResponse, 
+  checkRoleAccess,
+  validateRequiredFields,
+  isValidUuid,
+  handleCors
+} from '@/lib/api-utils'
 
 // GET - Fetch sessions
 export async function GET(request: NextRequest) {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json(
-        { error: 'Service unavailable' },
-        { status: 503 }
-      )
+    // Handle CORS
+    const corsResponse = handleCors(request)
+    if (corsResponse) return corsResponse
+
+    // Authenticate request
+    const { user, supabase, error: authError } = await authenticateRequest(request)
+    if (authError) {
+      return createErrorResponse(authError)
     }
 
-    const { userData, userSupabase, error, status } = await getUserFromRequest(request)
-    if (error) {
-      return NextResponse.json({ error }, { status })
+    if (!user || !supabase) {
+      return createErrorResponse({
+        error: 'Authentication failed',
+        code: 'AUTH_FAILED',
+        status: 401
+      })
     }
 
     const { searchParams } = new URL(request.url)
@@ -67,7 +35,16 @@ export async function GET(request: NextRequest) {
     const teamId = searchParams.get('team_id')
     const sessionType = searchParams.get('session_type')
 
-    let query = userSupabase!
+    // Validate team ID if provided
+    if (teamId && !isValidUuid(teamId)) {
+      return createErrorResponse({
+        error: 'Invalid team ID format',
+        code: 'INVALID_UUID',
+        status: 400
+      })
+    }
+
+    let query = supabase
       .from('sessions')
       .select(`
         *,
@@ -79,13 +56,20 @@ export async function GET(request: NextRequest) {
     if (dateParam) {
       query = query.eq('date', dateParam)
     } else {
-      // Default to current date
-      query = query.eq('date', new Date().toISOString().split('T')[0])
+      // Default window: admins/managers see past 14 days; others see today
+      const today = new Date()
+      const start = new Date()
+      start.setDate(start.getDate() - 14)
+      if (checkRoleAccess(user.role, ['admin', 'manager'])) {
+        query = query.gte('date', start.toISOString().split('T')[0]).lte('date', today.toISOString().split('T')[0])
+      } else {
+        query = query.eq('date', today.toISOString().split('T')[0])
+      }
     }
 
     // Apply team filter based on role
-    if (userData!.role === 'player' || userData!.role === 'coach') {
-      query = query.eq('team_id', userData!.team_id)
+    if (checkRoleAccess(user.role, ['player', 'coach'])) {
+      query = query.eq('team_id', user.team_id)
     } else if (teamId) {
       query = query.eq('team_id', teamId)
     }
@@ -99,132 +83,173 @@ export async function GET(request: NextRequest) {
 
     if (queryError) {
       console.error('Error fetching sessions:', queryError)
-      return NextResponse.json(
-        { error: 'Failed to fetch sessions' },
-        { status: 500 }
-      )
+      return createErrorResponse({
+        error: 'Failed to fetch sessions',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: queryError.message
+      })
     }
 
-    return NextResponse.json(data || [])
+    return createSuccessResponse(data || [])
 
   } catch (error) {
     console.error('Error in sessions API:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return createErrorResponse({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      status: 500
+    })
   }
 }
 
-// POST - Create session
+// POST - Create new session
 export async function POST(request: NextRequest) {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json(
-        { error: 'Service unavailable' },
-        { status: 503 }
-      )
+    // Handle CORS
+    const corsResponse = handleCors(request)
+    if (corsResponse) return corsResponse
+
+    // Authenticate request
+    const { user, supabase, error: authError } = await authenticateRequest(request)
+    if (authError) {
+      return createErrorResponse(authError)
     }
 
-    const { userData, userSupabase, error, status } = await getUserFromRequest(request)
-    if (error) {
-      return NextResponse.json({ error }, { status })
+    if (!user || !supabase) {
+      return createErrorResponse({
+        error: 'Authentication failed',
+        code: 'AUTH_FAILED',
+        status: 401
+      })
     }
 
-    // Only admins, managers, and coaches can create sessions
-    if (!['admin', 'manager', 'coach'].includes(userData!.role)) {
-      return NextResponse.json(
-        { error: 'Only administrators, managers, and coaches can create sessions' },
-        { status: 403 }
-      )
+    // Check permissions
+    if (!checkRoleAccess(user.role, ['admin', 'manager', 'coach'])) {
+      return createErrorResponse({
+        error: 'Insufficient permissions to create sessions',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        status: 403
+      })
     }
 
     const body = await request.json()
-    const { 
-      team_id, 
-      session_type, 
-      session_subtype, 
-      date, 
-      start_time, 
-      end_time, 
-      cutoff_time, 
-      title, 
-      description,
-      is_mandatory = true 
+    const {
+      team_id,
+      session_type,
+      session_subtype,
+      date,
+      start_time,
+      end_time,
+      cutoff_time,
+      title,
+      is_mandatory = false,
+      description = ''
     } = body
 
-    if (!team_id || !session_type || !date) {
-      return NextResponse.json(
-        { error: 'Team ID, session type, and date are required' },
-        { status: 400 }
-      )
-    }
-
-    // Coaches can only create sessions for their own team
-    if (userData!.role === 'coach' && userData!.team_id !== team_id) {
-      return NextResponse.json(
-        { error: 'Coaches can only create sessions for their own team' },
-        { status: 403 }
-      )
-    }
-
-    const { data, error: insertError } = await userSupabase!
-      .from('sessions')
-      .insert({
-        team_id,
-        session_type,
-        session_subtype,
-        date,
-        start_time,
-        end_time,
-        cutoff_time,
-        title,
-        description,
-        is_mandatory,
-        created_by: userData!.id
+    // Validate required fields
+    const validation = validateRequiredFields(body, ['team_id', 'session_type', 'date', 'start_time', 'end_time', 'title'])
+    if (!validation.valid) {
+      return createErrorResponse({
+        error: `Missing required fields: ${validation.missing.join(', ')}`,
+        code: 'MISSING_REQUIRED_FIELDS',
+        status: 400
       })
-      .select()
+    }
+
+    // Validate UUIDs
+    if (!isValidUuid(team_id)) {
+      return createErrorResponse({
+        error: 'Invalid team ID format',
+        code: 'INVALID_UUID',
+        status: 400
+      })
+    }
+
+    // For coaches, ensure they can only create sessions for their team
+    if (user.role === 'coach' && team_id !== user.team_id) {
+      return createErrorResponse({
+        error: 'Coaches can only create sessions for their own team',
+        code: 'TEAM_ACCESS_DENIED',
+        status: 403
+      })
+    }
+
+    // Create session
+    const sessionData = {
+      team_id,
+      session_type,
+      session_subtype: session_subtype || null,
+      date,
+      start_time,
+      end_time,
+      cutoff_time: cutoff_time || null,
+      title,
+      is_mandatory,
+      description,
+      created_by: user.id
+    }
+
+    const { data: session, error: insertError } = await supabase
+      .from('sessions')
+      .insert(sessionData)
+      .select(`
+        *,
+        teams:team_id(id, name),
+        created_by_user:created_by(id, name, email)
+      `)
+      .single()
 
     if (insertError) {
       console.error('Error creating session:', insertError)
-      return NextResponse.json(
-        { error: 'Failed to create session' },
-        { status: 500 }
-      )
+      return createErrorResponse({
+        error: 'Failed to create session',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: insertError.message
+      })
     }
 
-    return NextResponse.json(data[0])
+    return createSuccessResponse(session, 'Session created successfully', 201)
 
   } catch (error) {
-    console.error('Error in sessions POST API:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('Error in session creation:', error)
+    return createErrorResponse({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      status: 500
+    })
   }
 }
 
 // PUT - Update session
 export async function PUT(request: NextRequest) {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json(
-        { error: 'Service unavailable' },
-        { status: 503 }
-      )
+    // Handle CORS
+    const corsResponse = handleCors(request)
+    if (corsResponse) return corsResponse
+
+    // Authenticate request
+    const { user, supabase, error: authError } = await authenticateRequest(request)
+    if (authError) {
+      return createErrorResponse(authError)
     }
 
-    const { userData, userSupabase, error, status } = await getUserFromRequest(request)
-    if (error) {
-      return NextResponse.json({ error }, { status })
+    if (!user || !supabase) {
+      return createErrorResponse({
+        error: 'Authentication failed',
+        code: 'AUTH_FAILED',
+        status: 401
+      })
     }
 
     // Only admins, managers, and coaches can update sessions
-    if (!['admin', 'manager', 'coach'].includes(userData!.role)) {
-      return NextResponse.json(
-        { error: 'Only administrators, managers, and coaches can update sessions' },
-        { status: 403 }
-      )
+    if (!checkRoleAccess(user.role, ['admin', 'manager', 'coach'])) {
+      return createErrorResponse({
+        error: 'Only administrators, managers, and coaches can update sessions',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        status: 403
+      })
     }
 
     const body = await request.json()
@@ -243,21 +268,23 @@ export async function PUT(request: NextRequest) {
     } = body
 
     if (!id) {
-      return NextResponse.json(
-        { error: 'Session ID is required' },
-        { status: 400 }
-      )
+      return createErrorResponse({
+        error: 'Session ID is required',
+        code: 'MISSING_REQUIRED_FIELDS',
+        status: 400
+      })
     }
 
     // Coaches can only update sessions for their own team
-    if (userData!.role === 'coach' && team_id && userData!.team_id !== team_id) {
-      return NextResponse.json(
-        { error: 'Coaches can only update sessions for their own team' },
-        { status: 403 }
-      )
+    if (user.role === 'coach' && team_id && user.team_id !== team_id) {
+      return createErrorResponse({
+        error: 'Coaches can only update sessions for their own team',
+        code: 'TEAM_ACCESS_DENIED',
+        status: 403
+      })
     }
 
-    const { data, error: updateError } = await userSupabase!
+    const { data, error: updateError } = await supabase
       .from('sessions')
       .update({
         team_id,
@@ -277,99 +304,115 @@ export async function PUT(request: NextRequest) {
 
     if (updateError) {
       console.error('Error updating session:', updateError)
-      return NextResponse.json(
-        { error: 'Failed to update session' },
-        { status: 500 }
-      )
+      return createErrorResponse({
+        error: 'Failed to update session',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: updateError.message
+      })
     }
 
-    return NextResponse.json(data[0])
+    return createSuccessResponse(data[0])
 
   } catch (error) {
     console.error('Error in sessions PUT API:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return createErrorResponse({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      status: 500
+    })
   }
 }
 
 // DELETE - Delete session
 export async function DELETE(request: NextRequest) {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json(
-        { error: 'Service unavailable' },
-        { status: 503 }
-      )
+    // Handle CORS
+    const corsResponse = handleCors(request)
+    if (corsResponse) return corsResponse
+
+    // Authenticate request
+    const { user, supabase, error: authError } = await authenticateRequest(request)
+    if (authError) {
+      return createErrorResponse(authError)
     }
 
-    const { userData, userSupabase, error, status } = await getUserFromRequest(request)
-    if (error) {
-      return NextResponse.json({ error }, { status })
+    if (!user || !supabase) {
+      return createErrorResponse({
+        error: 'Authentication failed',
+        code: 'AUTH_FAILED',
+        status: 401
+      })
     }
 
     // Only admins, managers, and coaches can delete sessions
-    if (!['admin', 'manager', 'coach'].includes(userData!.role)) {
-      return NextResponse.json(
-        { error: 'Only administrators, managers, and coaches can delete sessions' },
-        { status: 403 }
-      )
+    if (!checkRoleAccess(user.role, ['admin', 'manager', 'coach'])) {
+      return createErrorResponse({
+        error: 'Only administrators, managers, and coaches can delete sessions',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        status: 403
+      })
     }
 
     const { searchParams } = new URL(request.url)
     const sessionId = searchParams.get('id')
 
     if (!sessionId) {
-      return NextResponse.json(
-        { error: 'Session ID is required' },
-        { status: 400 }
-      )
+      return createErrorResponse({
+        error: 'Session ID is required',
+        code: 'MISSING_REQUIRED_FIELDS',
+        status: 400
+      })
     }
 
     // For coaches, check if the session belongs to their team before deleting
-    if (userData!.role === 'coach') {
-      const { data: sessionData, error: sessionError } = await userSupabase!
+    if (user.role === 'coach') {
+      const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
         .select('team_id')
         .eq('id', sessionId)
         .single()
 
       if (sessionError || !sessionData) {
-        return NextResponse.json(
-          { error: 'Session not found' },
-          { status: 404 }
-        )
+        return createErrorResponse({
+          error: 'Session not found',
+          code: 'NOT_FOUND',
+          status: 404
+        })
       }
 
-      if (sessionData.team_id !== userData!.team_id) {
-        return NextResponse.json(
-          { error: 'Coaches can only delete sessions for their own team' },
-          { status: 403 }
-        )
+      if (sessionData.team_id !== user.team_id) {
+        return createErrorResponse({
+          error: 'Coaches can only delete sessions for their own team',
+          code: 'TEAM_ACCESS_DENIED',
+          status: 403
+        })
       }
     }
 
-    const { error: deleteError } = await userSupabase!
+    const { error: deleteError } = await supabase
       .from('sessions')
       .delete()
       .eq('id', sessionId)
 
     if (deleteError) {
       console.error('Error deleting session:', deleteError)
-      return NextResponse.json(
-        { error: 'Failed to delete session' },
-        { status: 500 }
-      )
+      return createErrorResponse({
+        error: 'Failed to delete session',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: deleteError.message
+      })
     }
 
-    return NextResponse.json({ success: true })
+    return createSuccessResponse({ success: true })
 
   } catch (error) {
     console.error('Error in sessions DELETE API:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return createErrorResponse({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      status: 500
+    })
   }
 }

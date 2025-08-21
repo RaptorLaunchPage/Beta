@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import getSupabaseAdmin from '@/lib/supabase-admin'
 
 function buildContactEmbed(payload: any) {
   const description = payload.topic === 'Brand / Collaboration'
@@ -41,7 +42,27 @@ function buildContactEmbed(payload: any) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const webhookUrl = process.env.NEXT_PUBLIC_CONTACT_WEBHOOK_URL || process.env.NEXT_PUBLIC_PUBLIC_WEBHOOK_URL
+    let webhookUrl = process.env.NEXT_PUBLIC_CONTACT_WEBHOOK_URL || process.env.NEXT_PUBLIC_PUBLIC_WEBHOOK_URL
+    if (!webhookUrl) {
+      try {
+        const admin = getSupabaseAdmin()
+        const { data: cfg } = await admin
+          .from('admin_config')
+          .select('value')
+          .eq('key', 'default_public_webhook_id')
+          .single()
+        const defaultWebhookId = cfg?.value
+        if (defaultWebhookId) {
+          const { data: hook } = await admin
+            .from('discord_webhooks')
+            .select('hook_url')
+            .eq('id', defaultWebhookId)
+            .single()
+          if (hook?.hook_url) webhookUrl = hook.hook_url
+        }
+      } catch {}
+    }
+
     if (!webhookUrl) {
       return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 })
     }

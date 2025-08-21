@@ -200,7 +200,7 @@ export function OCRExtract({ users, onPerformanceAdded }: OCRExtractProps) {
             player_id: row.player_id,
             team_id: selectedPlayer?.team_id || null,
             match_number: Number.parseInt(matchData.match_number),
-            slot: Number.parseInt(matchData.slot),
+            slot: matchData.slot || null,
             map: matchData.map,
             placement: matchData.placement ? Number.parseInt(matchData.placement) : null,
             kills: Number.parseInt(row.kills) || 0,
@@ -224,7 +224,7 @@ export function OCRExtract({ users, onPerformanceAdded }: OCRExtractProps) {
       const res = await fetch('/api/performances', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(performancesToInsert[0])
+        body: JSON.stringify(performancesToInsert)
       })
       if (!res.ok) throw new Error('Failed to submit performances')
 
@@ -345,10 +345,10 @@ export function OCRExtract({ users, onPerformanceAdded }: OCRExtractProps) {
               <Label htmlFor="slot">Slot</Label>
               <Input
                 id="slot"
-                type="number"
+                type="text"
                 value={matchData.slot}
                 onChange={(e) => setMatchData({ ...matchData, slot: e.target.value })}
-                placeholder="Enter slot number"
+                placeholder="Slot ID or number"
                 required
               />
             </div>

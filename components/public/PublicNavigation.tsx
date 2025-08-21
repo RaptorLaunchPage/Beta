@@ -14,7 +14,6 @@ const NAV_ITEMS = [
   { name: "About", href: "/about" },
   { name: "Rewards", href: "/incentives" },
   { name: "Tier", href: "/tier-structure" },
-  { name: "Gallery", href: "/gallery" },
   { name: "Apply", href: "/join-us" },
   { name: "FAQ", href: "/faq" },
   { name: "Contact Us", href: "/contact" },
@@ -25,7 +24,7 @@ export function PublicNavigation() {
 
   return (
     <header className={`fixed top-0 left-0 right-0 z-30 ${HEADER_BG}`}>
-      <div className="max-w-7xl mx-auto h-14 px-3 sm:px-4 flex items-center gap-2">
+      <div className="max-w-7xl mx-auto h-12 sm:h-14 px-2.5 sm:px-4 flex items-center gap-2">
         {/* Mobile menu (left) */}
         <div className="md:hidden">
           <Sheet>
@@ -49,7 +48,7 @@ export function PublicNavigation() {
         </div>
 
         {/* Brand left with gradient */}
-        <Link href="/public" className="font-extrabold tracking-wide text-transparent bg-gradient-to-r from-[#00C6FF] via-[#3A7DFF] to-[#B721FF] bg-clip-text drop-shadow-xl hover:brightness-110 transition-all">
+        <Link href="/public" className="font-extrabold tracking-wide text-transparent bg-gradient-to-r from-[#00C6FF] via-[#3A7DFF] to-[#B721FF] bg-clip-text drop-shadow-xl hover:brightness-110 transition-all text-sm sm:text-base">
           RAPTOR ESPORTS
         </Link>
         
@@ -74,7 +73,7 @@ export function PublicNavigation() {
         <div className="ml-auto flex items-center gap-2">
           <Link
             href="/auth/login"
-            className={`px-3 py-1.5 rounded-md font-semibold text-xs sm:text-sm cursor-pointer ${getButtonStyle('primary')}`}
+            className={`px-2.5 sm:px-3 py-1.5 rounded-md font-semibold text-xs sm:text-sm cursor-pointer ${getButtonStyle('primary')}`}
             onClick={() => console.log('🔄 Dashboard button clicked - redirecting to login')}
           >
             Dashboard

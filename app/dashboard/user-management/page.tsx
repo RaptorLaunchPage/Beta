@@ -396,10 +396,12 @@ export default function UserManagementPage() {
                   <TableCell>
                     {getStatusIcon(user.role)}
                   </TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium max-w-[140px] sm:max-w-none truncate">
                     {user.name || "No name set"}
                   </TableCell>
-                  <TableCell>{user.email}</TableCell>
+                  <TableCell className="max-w-[180px] sm:max-w-none truncate font-mono text-xs sm:text-sm">
+                    {user.email}
+                  </TableCell>
                   <TableCell>
                     {user.provider === 'discord' ? (
                       <div className="flex items-center gap-1 text-[#5865F2]">
@@ -424,8 +426,8 @@ export default function UserManagementPage() {
                       : (teams.find(t => t.id === user.team_id)?.name || "No team")
                     }
                   </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
+                  <TableCell className="whitespace-nowrap">
+                    <div className="flex gap-2 justify-end sm:justify-start">
                       <Button 
                         size="sm" 
                         variant="outline" 
