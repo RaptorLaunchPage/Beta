@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { 
-  getTeamAutomationSettings,
-  getGlobalAutomationSettings,
-  updateAutomationSetting
-} from '@/modules/discord-portal'
 import type { AutomationKey } from '@/modules/discord-portal'
 
 // Initialize Supabase client factory for user-bound operations
@@ -89,9 +84,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let settings
+    // Query settings with user-bound client and return array shape for UI
+    const query = userClient
+      .from('communication_settings')
+      .select('setting_key, setting_value, team_id')
+
     if (isGlobal) {
-      settings = await getGlobalAutomationSettings()
+      query.is('team_id', null)
     } else {
       const targetTeamId = teamId || userData!.team_id
       if (!targetTeamId) {
@@ -100,10 +99,15 @@ export async function GET(request: NextRequest) {
           { status: 400 }
         )
       }
-      settings = await getTeamAutomationSettings(targetTeamId)
+      query.eq('team_id', targetTeamId)
     }
 
-    return NextResponse.json({ settings })
+    const { data, error: fetchError } = await query
+    if (fetchError) {
+      return NextResponse.json({ error: fetchError.message }, { status: 400 })
+    }
+
+    return NextResponse.json({ settings: data || [] })
 
   } catch (error) {
     console.error('Error fetching automation settings:', error)
@@ -196,21 +200,21 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const result = await updateAutomationSetting(
-      settingKey,
-      enabled,
-      finalTeamId,
-      userData!.id
-    )
+    const { error: upsertError } = await userClient
+      .from('communication_settings')
+      .upsert({
+        team_id: finalTeamId,
+        setting_key: settingKey,
+        setting_value: enabled,
+        updated_by: userData!.id,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'team_id,setting_key' })
 
-    if (result.success) {
-      return NextResponse.json({ success: true })
-    } else {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 400 }
-      )
+    if (upsertError) {
+      return NextResponse.json({ error: upsertError.message }, { status: 400 })
     }
+
+    return NextResponse.json({ success: true })
 
   } catch (error) {
     console.error('Error updating automation setting:', error)
