@@ -21,6 +21,11 @@ export default function IncentivesPage() {
             <FadeInOnScroll>
               <h1 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-xl">Earn more as you climb the ranks.</h1>
             </FadeInOnScroll>
+            <FadeInOnScroll delayMs={120}>
+              <p className="mt-3 max-w-3xl text-white/80">
+                Performance-based rewards, cost coverage, and perks that scale with your tier.
+              </p>
+            </FadeInOnScroll>
           </div>
         </section>
 
