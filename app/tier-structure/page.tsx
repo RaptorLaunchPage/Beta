@@ -169,7 +169,7 @@ export default function TierStructurePage() {
                 <h3 className="text-2xl sm:text-3xl font-bold text-white mb-4">Think your team has what it takes? Join Raptor Esports today.</h3>
               </FadeInOnScroll>
               <FadeInOnScroll delayMs={120}>
-                <Link href="/recruitment" className={`inline-flex items-center gap-2 px-5 py-2 rounded-md font-semibold ${getButtonStyle('primary')}`}>
+                <Link href="/join-us" className={`inline-flex items-center gap-2 px-5 py-2 rounded-md font-semibold ${getButtonStyle('primary')}`}>
                   Apply Now
                   <ArrowRight className="h-4 w-4" />
                 </Link>
