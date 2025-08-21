@@ -577,7 +577,7 @@ export default function FAQPage() {
                                           type="button"
                                           aria-label="Copy link"
                                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCopyLink(item.id) }}
-                                          className="ml-2 inline-flex items-center justify-center rounded p-1 text-white/70 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/15"
+                                          className="ml-2 h-8 w-8 inline-flex items-center justify-center rounded-md text-white/70 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/15 p-0"
                                         >
                                           <Link2 className="h-4 w-4" />
                                         </button>
