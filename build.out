@@ -1,2 +1,133 @@
-! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-10.14.0.tgz
-? Do you want to continue? [Y/n] 
+
+> raptor-esports-hub@0.1.0 build /workspace
+> next build
+
+  ▲ Next.js 14.2.30
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/98) ...
+   Generating static pages (24/98) 
+   Generating static pages (48/98) 
+   Generating static pages (73/98) 
+ ✓ Generating static pages (98/98)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                       Size     First Load JS
+┌ ○ /                                             249 B           728 kB
+├ ○ /_not-found                                   137 B           694 kB
+├ ○ /about                                        1.46 kB         730 kB
+├ ○ /agreement-review                             3.04 kB         731 kB
+├ ƒ /api/admin/agreements                         0 B                0 B
+├ ƒ /api/admin/settings                           0 B                0 B
+├ ƒ /api/agreements                               0 B                0 B
+├ ƒ /api/agreements/content                       0 B                0 B
+├ ƒ /api/analytics/performance                    0 B                0 B
+├ ƒ /api/attendances                              0 B                0 B
+├ ƒ /api/attendances/summary                      0 B                0 B
+├ ƒ /api/attendances/verification                 0 B                0 B
+├ ƒ /api/auth/session                             0 B                0 B
+├ ƒ /api/dashboard/overview                       0 B                0 B
+├ ƒ /api/discord-portal/logs                      0 B                0 B
+├ ƒ /api/discord-portal/send                      0 B                0 B
+├ ƒ /api/discord-portal/settings                  0 B                0 B
+├ ƒ /api/discord-portal/settings/default-webhook  0 B                0 B
+├ ƒ /api/discord-portal/webhooks                  0 B                0 B
+├ ƒ /api/discord-portal/webhooks/validate         0 B                0 B
+├ ƒ /api/discord/attendance-summary               0 B                0 B
+├ ƒ /api/discord/attendance/mark                  0 B                0 B
+├ ƒ /api/discord/digest                           0 B                0 B
+├ ƒ /api/discord/performance/upload               0 B                0 B
+├ ƒ /api/discord/sessions                         0 B                0 B
+├ ƒ /api/discord/team-attendance-summary          0 B                0 B
+├ ƒ /api/discord/team-performance                 0 B                0 B
+├ ƒ /api/discord/tryout/announce                  0 B                0 B
+├ ƒ /api/discord/tryout/apply                     0 B                0 B
+├ ƒ /api/discord/tryout/evaluate                  0 B                0 B
+├ ƒ /api/discord/tryout/invite                    0 B                0 B
+├ ƒ /api/discord/tryout/list                      0 B                0 B
+├ ƒ /api/discord/tryout/status                    0 B                0 B
+├ ƒ /api/discord/webhooks                         0 B                0 B
+├ ƒ /api/expenses                                 0 B                0 B
+├ ƒ /api/media/delete                             0 B                0 B
+├ ƒ /api/media/upload                             0 B                0 B
+├ ƒ /api/performances                             0 B                0 B
+├ ƒ /api/profile                                  0 B                0 B
+├ ƒ /api/profile/avatar                           0 B                0 B
+├ ƒ /api/profile/search                           0 B                0 B
+├ ƒ /api/public/stats                             0 B                0 B
+├ ƒ /api/public/submit/application                0 B                0 B
+├ ƒ /api/public/submit/contact                    0 B                0 B
+├ ƒ /api/public/upload/contact-file               0 B                0 B
+├ ƒ /api/rosters                                  0 B                0 B
+├ ƒ /api/sessions                                 0 B                0 B
+├ ƒ /api/sessions/attendance-heatmap              0 B                0 B
+├ ƒ /api/sessions/daily-practice                  0 B                0 B
+├ ƒ /api/sessions/generate-daily                  0 B                0 B
+├ ƒ /api/sessions/mark-attendance                 0 B                0 B
+├ ƒ /api/sessions/practice-config                 0 B                0 B
+├ ƒ /api/sessions/practice-config/reset           0 B                0 B
+├ ƒ /api/slots                                    0 B                0 B
+├ ƒ /api/teams                                    0 B                0 B
+├ ƒ /api/teams/[id]/players                       0 B                0 B
+├ ƒ /api/teams/manage                             0 B                0 B
+├ ƒ /api/teams/monthly                            0 B                0 B
+├ ƒ /api/tier-defaults                            0 B                0 B
+├ ƒ /api/tryouts                                  0 B                0 B
+├ ƒ /api/users                                    0 B                0 B
+├ ƒ /api/winnings                                 0 B                0 B
+├ ƒ /apply/[tryoutId]                             2.23 kB         730 kB
+├ ○ /auth/confirm                                 2.27 kB         730 kB
+├ ○ /auth/forgot                                  1.28 kB         729 kB
+├ ○ /auth/login                                   1.98 kB         730 kB
+├ ○ /auth/signup                                  2.21 kB         730 kB
+├ ○ /contact                                      2.99 kB         731 kB
+├ ○ /dashboard                                    7.31 kB         735 kB
+├ ○ /dashboard/admin/agreements                   2.74 kB         731 kB
+├ ○ /dashboard/admin/settings                     2.17 kB         730 kB
+├ ○ /dashboard/analytics                          10.5 kB         739 kB
+├ ○ /dashboard/attendance                         16.6 kB         745 kB
+├ ○ /dashboard/discord-portal                     2.7 kB          731 kB
+├ ○ /dashboard/discord-portal/logs                174 B           728 kB
+├ ○ /dashboard/discord-portal/settings            175 B           728 kB
+├ ○ /dashboard/discord-portal/webhooks            174 B           728 kB
+├ ○ /dashboard/finance                            5.61 kB         734 kB
+├ ○ /dashboard/media                              1.78 kB         730 kB
+├ ○ /dashboard/performance                        10.4 kB         739 kB
+├ ○ /dashboard/performance-report                 3.52 kB         732 kB
+├ ○ /dashboard/profile                            10.9 kB         739 kB
+├ ○ /dashboard/team-management                    456 B           729 kB
+├ ○ /dashboard/team-management/roster             2.75 kB         731 kB
+├ ○ /dashboard/team-management/slots              4.3 kB          732 kB
+├ ○ /dashboard/team-management/teams              2.5 kB          731 kB
+├ ○ /dashboard/team-management/tiers              175 B           728 kB
+├ ○ /dashboard/tryouts                            2.36 kB         730 kB
+├ ƒ /dashboard/tryouts/[id]                       2.67 kB         731 kB
+├ ○ /dashboard/tryouts/create                     1.09 kB         729 kB
+├ ○ /dashboard/user-management                    3.42 kB         732 kB
+├ ○ /debug                                        3.19 kB         731 kB
+├ ○ /debug-simple                                 1.8 kB          730 kB
+├ ○ /faq                                          5.06 kB         733 kB
+├ ○ /gallery                                      1.82 kB         730 kB
+├ ○ /highlight                                    483 B           729 kB
+├ ○ /incentives                                   1.82 kB         730 kB
+├ ○ /join-us                                      3.21 kB         731 kB
+├ ○ /onboarding                                   2.8 kB          731 kB
+├ ○ /public                                       175 B           728 kB
+├ ○ /robots.txt                                   0 B                0 B
+├ ○ /sitemap.xml                                  0 B                0 B
+└ ○ /tier-structure                               2.18 kB         730 kB
++ First Load JS shared by all                     694 kB
+  ├ chunks/vendors-915c648163c8da1c.js            692 kB
+  └ other shared chunks (total)                   2.67 kB
+
+
+ƒ Middleware                                      26.8 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
