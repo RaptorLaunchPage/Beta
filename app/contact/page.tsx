@@ -21,6 +21,8 @@ const collabTypes = [
   { value: 'other', label: 'Other' }
 ]
 
+const DISCORD_INVITE = process.env.NEXT_PUBLIC_DISCORD_INVITE || 'https://discord.com/invite/'
+
 export default function ContactPage() {
   const { toast } = useToast()
   const [mode, setMode] = useState<'general' | 'brand'>('general')
@@ -210,6 +212,17 @@ export default function ContactPage() {
                   <CheckCircle2 className="h-10 w-10 text-green-400 mx-auto mb-3" />
                   <div className="text-2xl font-semibold">Thank you for reaching out!</div>
                   <p className="text-white/80 mt-2">We'll get back to you soon.</p>
+                  <p className="text-white/80 mt-6">Join our Discord for updates and any further communication.</p>
+                  <div className="mt-3">
+                    <a
+                      href={DISCORD_INVITE}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center px-5 py-2 rounded-md font-semibold bg-[#5865F2] hover:bg-[#4752C4] text-white"
+                    >
+                      Join our Discord
+                    </a>
+                  </div>
                 </CardContent>
               </Card>
             </FadeInOnScroll>
