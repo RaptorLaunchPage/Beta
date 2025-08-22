@@ -6,18 +6,12 @@ import { useSearchParams } from "next/navigation"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ResponsiveTabs, TabsContent } from "@/components/ui/enhanced-tabs"
 import { ProfileHeader } from "@/components/profile/profile-header"
-import { BGMIGamingSection } from "@/components/profile/bgmi-gaming-section"
-import { ProfileSearch } from "@/components/profile/profile-search"
-import { PersonalInformationSection, GamingInformationSection, DeviceInformationSection } from "@/components/profile/profile-sections"
+import { PersonalInformationSection, DeviceInformationSection } from "@/components/profile/profile-sections"
 import { UserProfile, canViewProfile, canEditProfile } from "@/lib/profile-utils"
 import { useToast } from "@/hooks/use-toast"
 import { 
   User, 
-  Gamepad2, 
   Smartphone, 
-  Users, 
-  Settings, 
-  Search,
   Shield,
   AlertCircle
 } from "lucide-react"
@@ -32,7 +26,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("personal")
-  const [bgmiEditing, setBgmiEditing] = useState(false)
 
   // Profile to display - either target user or current user
   const displayProfile = targetProfile || currentProfile
@@ -54,7 +47,6 @@ export default function ProfilePage() {
     displayProfile.team_id,
     currentProfile.id
   ) : false
-  const canSearchAll = ['admin', 'manager'].includes(currentProfile?.role || '')
 
   // Load target profile if specified
   useEffect(() => {
@@ -227,25 +219,9 @@ export default function ProfilePage() {
             icon: User
           },
           {
-            value: "gaming", 
-            label: "Gaming Info",
-            icon: Gamepad2
-          },
-          {
             value: "device",
             label: "Device Info", 
             icon: Smartphone
-          },
-          {
-            value: "bgmi",
-            label: "BGMI Profile",
-            icon: Gamepad2
-          },
-          {
-            value: "search",
-            label: "Search Profiles",
-            icon: Search,
-            hidden: !canSearchAll
           }
         ]}
         value={activeTab}
@@ -265,15 +241,6 @@ export default function ProfilePage() {
           />
         </TabsContent>
 
-        {/* Gaming Information Section */}
-        <TabsContent value="gaming" className="space-y-6">
-          <GamingInformationSection
-            profile={displayProfile}
-            canEdit={canEdit}
-            onUpdate={handleProfileUpdate}
-          />
-        </TabsContent>
-
         {/* Device Information Section */}
         <TabsContent value="device" className="space-y-6">
           <DeviceInformationSection
@@ -281,22 +248,6 @@ export default function ProfilePage() {
             canEdit={canEdit}
             onUpdate={handleProfileUpdate}
           />
-        </TabsContent>
-
-        {/* BGMI Gaming Section */}
-        <TabsContent value="bgmi" className="space-y-6">
-          <BGMIGamingSection 
-            profile={displayProfile}
-            isEditing={bgmiEditing}
-            canEdit={canEdit}
-            onUpdate={handleProfileUpdate}
-            onEditToggle={setBgmiEditing}
-          />
-        </TabsContent>
-
-        {/* Profile Search Section */}
-        <TabsContent value="search" className="space-y-6">
-          <ProfileSearch />
         </TabsContent>
       </ResponsiveTabs>
     </div>

@@ -231,10 +231,35 @@ export default function SlotsPage() {
     }
     setFormLoading(true)
     try {
-      const token = await supabase.auth.getSession().then(s => s.data.session?.access_token)
-      const res = await fetch(`/api/slots?id=${slotId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
-      if (!res.ok) throw new Error('Failed to delete slot')
-      toast({ title: "Success", description: "Slot deleted successfully." })
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        throw new Error('Authentication required')
+      }
+      
+      console.log('Deleting slot:', slotId)
+      const res = await fetch(`/api/slots?id=${slotId}`, { 
+        method: 'DELETE', 
+        headers: { 
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        } 
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        console.error('Slot deletion failed:', errorData)
+        throw new Error(errorData.error || `HTTP ${res.status}: Failed to delete slot`)
+      }
+      
+      const result = await res.json()
+      console.log('Slot deletion successful:', result)
+      
+      toast({ 
+        title: "Success", 
+        description: "Slot deleted successfully." 
+      })
+      
+      // Refresh the slots list
       fetchSlots(currentView, filterMonth ? format(filterMonth, 'yyyy-MM') : undefined)
     } catch (error: any) {
       console.error("Error deleting slot:", error)

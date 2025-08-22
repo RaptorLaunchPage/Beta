@@ -340,13 +340,24 @@ export async function DELETE(request: Request) {
     }
 
     // Get slot details for permission check
-    const { data: slot } = await supabase
+    const { data: slot, error: slotFetchError } = await supabase
       .from('slots')
       .select('team_id')
       .eq('id', slotId)
       .single()
 
+    if (slotFetchError) {
+      console.error('Error fetching slot for deletion:', slotFetchError)
+      return createErrorResponse({
+        error: 'Error fetching slot details',
+        code: 'DATABASE_ERROR',
+        status: 500,
+        details: slotFetchError.message
+      })
+    }
+
     if (!slot) {
+      console.log('Slot not found for deletion:', slotId)
       return createErrorResponse({
         error: 'Slot not found',
         code: 'SLOT_NOT_FOUND',
@@ -354,8 +365,11 @@ export async function DELETE(request: Request) {
       })
     }
 
+    console.log('Deleting slot:', { slotId, userRole: user.role, userTeamId: user.team_id, slotTeamId: slot.team_id })
+
     // For coaches, ensure they can only delete slots for their team
     if (user.role === 'coach' && slot.team_id !== user.team_id) {
+      console.log('Coach team access denied for slot deletion')
       return createErrorResponse({
         error: 'Coaches can only delete slots for their own team',
         code: 'TEAM_ACCESS_DENIED',
@@ -379,6 +393,7 @@ export async function DELETE(request: Request) {
       })
     }
 
+    console.log('Slot deleted successfully:', slotId)
     return createSuccessResponse({ success: true }, 'Slot deleted successfully')
 
   } catch (error) {
