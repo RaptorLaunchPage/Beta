@@ -26,11 +26,9 @@ export function usePostAuthRedirect(options: UsePostAuthRedirectOptions = {}) {
   } = options
 
   const { user, profile, isLoading, isAuthenticated, agreementStatus } = useAuth()
-  const { safeRedirect } = useSafeRedirect()
   const router = useRouter()
   const pathname = usePathname()
   const hasRedirected = useRef(false)
-  const redirectTimeout = useRef<NodeJS.Timeout | null>(null)
   const mounted = useRef(true)
 
   useEffect(() => {
@@ -40,28 +38,28 @@ export function usePostAuthRedirect(options: UsePostAuthRedirectOptions = {}) {
   }, [])
 
   useEffect(() => {
-    // Don't redirect if still loading, already redirected, or not properly authenticated
-    if (isLoading || hasRedirected.current || !isAuthenticated || !user || !profile || !mounted.current) {
+    // Simple conditions: must be authenticated with profile and not already redirected
+    if (!isAuthenticated || !user || !profile || isLoading || hasRedirected.current || !mounted.current) {
       return
     }
 
     // Check if we should redirect from current page
     const shouldRedirect = forceRedirect || redirectFromPages.includes(pathname)
-    
     if (!shouldRedirect) {
       return
     }
 
-    console.log(`🚀 Post-auth redirect: User authenticated on ${pathname}, determining redirect...`)
+    console.log(`🚀 Post-auth redirect: User authenticated on ${pathname}`)
 
-    // Determine correct redirect path with agreement priority
+    // Determine target path - simple logic
     let targetPath = '/dashboard'
+    
     if (agreementStatus?.requiresAgreement) {
       targetPath = '/agreement-review'
-      console.log('📝 Agreement required — redirecting to agreement review')
+      console.log('📝 Redirecting to agreement review')
     } else if (profile.role === 'pending_player' && !profile.onboarding_completed) {
       targetPath = '/onboarding'
-      console.log('🔄 New user needs onboarding')
+      console.log('🔄 Redirecting to onboarding')
     } else {
       console.log('🔄 Redirecting to dashboard')
     }
@@ -72,47 +70,17 @@ export function usePostAuthRedirect(options: UsePostAuthRedirectOptions = {}) {
       return
     }
 
-    // Mark as redirected to prevent multiple redirects
+    // Mark as redirected and perform redirect
     hasRedirected.current = true
-
-    // Clear any existing timeout
-    if (redirectTimeout.current) {
-      clearTimeout(redirectTimeout.current)
-    }
-
-    // For homepage (likely Discord OAuth landing), redirect immediately
-    const isHomepageRedirect = pathname === '/'
-    const actualDelay = isHomepageRedirect ? 50 : redirectDelay
-
-    console.log(`⚡ Executing post-auth redirect to: ${targetPath} (delay: ${actualDelay}ms)`) 
-
-    // Perform redirect with delay
-    redirectTimeout.current = setTimeout(() => {
-      if (!mounted.current) return
-      
-      // Use router.replace to avoid back button issues
-      router.replace(targetPath)
-      
-    }, actualDelay)
-
-    return () => {
-      if (redirectTimeout.current) {
-        clearTimeout(redirectTimeout.current)
+    console.log(`⚡ Redirecting to: ${targetPath}`)
+    
+    setTimeout(() => {
+      if (mounted.current) {
+        router.replace(targetPath)
       }
-    }
-  }, [
-    isAuthenticated, 
-    user, 
-    profile, 
-    isLoading, 
-    pathname, 
-    forceRedirect, 
-    redirectFromPages, 
-    redirectDelay, 
-    router, 
-    safeRedirect,
-    agreementStatus
-  ])
+    }, redirectDelay)
+
+  }, [isAuthenticated, user, profile, isLoading, pathname, forceRedirect, redirectFromPages, redirectDelay, router, agreementStatus])
 
   // Reset redirect flag when auth state changes
   useEffect(() => {
@@ -120,15 +88,6 @@ export function usePostAuthRedirect(options: UsePostAuthRedirectOptions = {}) {
       hasRedirected.current = false
     }
   }, [isAuthenticated, user])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (redirectTimeout.current) {
-        clearTimeout(redirectTimeout.current)
-      }
-    }
-  }, [])
 
   const computedTarget = agreementStatus?.requiresAgreement
     ? '/agreement-review'

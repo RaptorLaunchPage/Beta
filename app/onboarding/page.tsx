@@ -160,10 +160,14 @@ export default function OnboardingPage() {
 
       // Refresh the auth state to pick up the profile changes
       await refreshProfile()
+      
+      // Simple redirect to dashboard where they'll see the pending approval message
       if (!hasRedirected) {
         setHasRedirected(true)
-        router.replace('/dashboard')
-        setTimeout(() => safeRedirect('/dashboard'), 200)
+        console.log('🔄 Onboarding complete, redirecting to dashboard for pending approval message')
+        setTimeout(() => {
+          router.replace('/dashboard')
+        }, 1500) // Give time for the toast to be seen
       }
 
     } catch (error: any) {
