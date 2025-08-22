@@ -36,6 +36,7 @@ export default function OnboardingPage() {
   const { safeRedirect } = useSafeRedirect()
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState(1)
+  const [hasRedirected, setHasRedirected] = useState(false)
   const [formData, setFormData] = useState<OnboardingForm>({
     fullName: "",
     displayName: "",
@@ -48,20 +49,24 @@ export default function OnboardingPage() {
   
   // Add refs to prevent multiple redirects
   const mounted = useRef(true)
-  const redirected = useRef(false)
 
   useEffect(() => {
+    // Prevent multiple redirects
+    if (hasRedirected) return
+
     // Redirect if user is already onboarded or not authenticated
     if (!authLoading && profile) {
       if (profile.role !== "pending_player") {
         console.log('🔄 User already onboarded, redirecting to dashboard')
-        safeRedirect("/dashboard")
+        setHasRedirected(true)
+        setTimeout(() => router.replace("/dashboard"), 500)
       }
     } else if (!authLoading && !profile) {
       console.log('🔄 No profile found, redirecting to homepage')
-      safeRedirect("/")
+      setHasRedirected(true)
+      setTimeout(() => router.replace("/"), 500)
     }
-  }, [profile, authLoading, safeRedirect])
+  }, [profile, authLoading, router, hasRedirected])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -155,10 +160,14 @@ export default function OnboardingPage() {
 
       // Refresh the auth state to pick up the profile changes
       await refreshProfile()
-      if (!redirected.current) {
-        redirected.current = true
-        router.replace('/dashboard')
-        setTimeout(() => safeRedirect('/dashboard'), 200)
+      
+      // Simple redirect to dashboard where they'll see the pending approval message
+      if (!hasRedirected) {
+        setHasRedirected(true)
+        console.log('🔄 Onboarding complete, redirecting to dashboard for pending approval message')
+        setTimeout(() => {
+          router.replace('/dashboard')
+        }, 1500) // Give time for the toast to be seen
       }
 
     } catch (error: any) {

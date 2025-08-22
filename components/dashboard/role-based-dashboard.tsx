@@ -537,6 +537,8 @@ function getRoleIcon(role: UserRole) {
       return <BarChart3 className="h-8 w-8 text-indigo-400" />
     case 'player':
       return <Target className="h-8 w-8 text-green-400" />
+    case 'pending_player':
+      return <UserCheck className="h-8 w-8 text-yellow-400" />
     default:
       return <UserCheck className="h-8 w-8 text-gray-400" />
   }
@@ -554,6 +556,8 @@ function getRoleWelcomeMessage(role: UserRole): string {
       return 'Analyze performance data and provide strategic insights.'
     case 'player':
       return 'Track your progress, view stats, and stay connected with your team.'
+    case 'pending_player':
+      return 'Your application is under review. We\'ll notify you once approved!'
     default:
       return 'Complete your profile setup to access all features.'
   }
@@ -603,7 +607,18 @@ function getRoleAlerts(role: UserRole, profile: any): Array<{
 }> {
   const alerts = []
 
-  // Common alerts for incomplete profiles
+  // Pending player specific alert - highest priority
+  if (role === 'pending_player') {
+    alerts.push({
+      type: 'yellow' as const,
+      title: 'Account Pending Approval',
+      message: 'Your profile has been submitted and is awaiting admin approval. You will be notified once your account is activated. For urgent matters, contact us on Discord.',
+      action: { label: 'Join Discord', href: 'https://discord.gg/raptoresports' }
+    })
+    return alerts // Return early for pending players - this is their main message
+  }
+
+  // Common alerts for incomplete profiles (skip for pending_player)
   if (!profile?.full_name || !profile?.device_model) {
     alerts.push({
       type: 'yellow' as const,

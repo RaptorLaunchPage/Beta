@@ -33,9 +33,29 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // Helper to get the correct site URL for redirects
 const getSiteUrl = () => {
-  let url = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_VERCEL_URL || 'http://localhost:3000'
-  url = url.startsWith('http') ? url : `https://${url}`
-  return url.endsWith('/') ? url.slice(0, -1) : url
+  // In production, prioritize NEXT_PUBLIC_SITE_URL over VERCEL_URL to avoid subdomain issues
+  let url = process.env.NEXT_PUBLIC_SITE_URL
+  
+  // Only use VERCEL_URL as fallback if no SITE_URL is set and we're not in development
+  if (!url && process.env.NODE_ENV !== 'development') {
+    url = process.env.NEXT_PUBLIC_VERCEL_URL
+  }
+  
+  // Development fallback
+  if (!url) {
+    url = 'http://localhost:3000'
+  }
+  
+  // Ensure URL has protocol
+  if (!url.startsWith('http')) {
+    url = `https://${url}`
+  }
+  
+  // Remove trailing slash
+  url = url.endsWith('/') ? url.slice(0, -1) : url
+  
+  console.log('🔗 Site URL resolved to:', url)
+  return url
 }
 
 const AuthProviderV2 = memo(function AuthProviderV2({ children }: { children: React.ReactNode }) {

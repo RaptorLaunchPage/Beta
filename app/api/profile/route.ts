@@ -176,7 +176,9 @@ export async function PUT(request: NextRequest) {
       'display_name', 'full_name', 'experience', 'preferred_role',
       'favorite_games', 'bgmi_id', 'bgmi_tier', 'bgmi_points',
       'sensitivity_settings', 'control_layout', 'hud_layout_code',
-      'game_stats', 'achievements'
+      'game_stats', 'achievements', 'favorite_weapons', 'gaming_achievements',
+      'emergency_contact_name', 'emergency_contact_number', 'date_of_birth',
+      'address', 'profile_visibility', 'last_profile_update'
     ]
 
     const filteredUpdates: any = {}
@@ -186,13 +188,23 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    if (Object.keys(filteredUpdates).length === 0) {
+    // Add timestamp for profile updates
+    filteredUpdates.last_profile_update = new Date().toISOString()
+    filteredUpdates.updated_at = new Date().toISOString()
+
+    if (Object.keys(filteredUpdates).length <= 2) { // Only timestamp fields
       return createErrorResponse({
         error: 'No valid fields to update',
         code: 'NO_VALID_UPDATES',
         status: 400
       })
     }
+
+    console.log('Profile update request:', {
+      userId: targetUserId,
+      updatedFields: Object.keys(filteredUpdates),
+      updates: filteredUpdates
+    })
 
     // Update profile
     const { data: updatedProfile, error: updateError } = await userSupabase
@@ -212,6 +224,7 @@ export async function PUT(request: NextRequest) {
       })
     }
 
+    console.log('Profile updated successfully:', updatedProfile.id)
     return createSuccessResponse({ profile: updatedProfile }, 'Profile updated successfully')
     
   } catch (error: any) {

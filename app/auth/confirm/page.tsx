@@ -25,6 +25,7 @@ function AuthConfirmContent() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
   const [authProgress, setAuthProgress] = useState('Initializing...')
+  const [hasRedirected, setHasRedirected] = useState(false)
   
   // Use unified post-auth redirect hook
   const { isRedirecting } = usePostAuthRedirect({
@@ -33,9 +34,13 @@ function AuthConfirmContent() {
   })
 
   useEffect(() => {
-    // UNIFIED AUTH CONFIRMATION: Handle redirects with timeout fallback
+    // Prevent multiple redirects
+    if (hasRedirected) return
+
+    // Simple redirect logic for authenticated users
     if (user && profile && !isLoading) {
-      console.log('✅ Auth confirmation: User authenticated, redirecting immediately')
+      console.log('✅ Auth confirmation: User authenticated, redirecting')
+      setHasRedirected(true)
       
       // Determine redirect path
       let redirectPath = '/dashboard'
@@ -44,113 +49,82 @@ function AuthConfirmContent() {
         console.log('🔄 New user needs onboarding')
       }
       
-      // Immediate redirect - don't wait for auth hook
       console.log(`🚀 Auth confirm: Redirecting to ${redirectPath}`)
-      router.replace(redirectPath) // Use replace to avoid back button issues
+      setTimeout(() => {
+        router.replace(redirectPath)
+      }, 1000) // 1 second delay to show the success state
       return
     }
 
-    // Check if this is an OAuth flow (no token_hash parameter)
+    // Handle OAuth flow (no token_hash parameter)
     const tokenHash = searchParams.get('token_hash')
     const type = searchParams.get('type')
     const isOAuthFlow = !tokenHash && !type
 
-    if (isOAuthFlow) {
-      console.log('🔐 OAuth flow detected, waiting for auth state to complete...')
+    if (isOAuthFlow && !user) {
+      console.log('🔐 OAuth flow detected, waiting for auth...')
       setAuthProgress('Processing authentication...')
       
-      // Update progress indicators
-      const progressInterval = setInterval(() => {
-        if (user && !profile) {
-          setAuthProgress('Loading profile...')
-        } else if (user && profile) {
-          setAuthProgress('Redirecting...')
-        }
-      }, 1000)
-      
-      // Add timeout fallback in case auth hook doesn't trigger
+      // Simple timeout - if no auth after 10 seconds, go home
       const timeoutId = setTimeout(() => {
-        console.log('⚠️ Auth confirmation timeout - checking auth state...')
-        setAuthProgress('Finalizing...')
-        
-        if (user && profile) {
-          const redirectPath = profile.role === 'pending_player' && !profile.onboarding_completed 
-            ? '/onboarding' 
-            : '/dashboard'
-          console.log(`🚀 Timeout fallback: Redirecting to ${redirectPath}`)
-          router.push(redirectPath)
-        } else {
-          console.log('⚠️ No auth state after timeout, redirecting to homepage')
-          router.push('/')
+        if (!hasRedirected && !user) {
+          console.log('⚠️ Auth timeout, redirecting to homepage')
+          setAuthProgress('Redirecting...')
+          router.replace('/')
         }
-      }, 5000) // 5 second timeout
+      }, 10000) // 10 second timeout
       
-      return () => {
-        clearTimeout(timeoutId)
-        clearInterval(progressInterval)
-      }
+      return () => clearTimeout(timeoutId)
     }
 
-    // Handle email confirmation flow
-    const handleAuthConfirmation = async () => {
-      try {
-        if (!tokenHash || type !== 'signup') {
-          throw new Error('Invalid confirmation link')
-        }
-
-        // Verify the token with Supabase
-        const { data, error } = await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: 'signup'
-        })
-
-        if (error) {
-          throw error
-        }
-
-        if (data.user) {
-          setStatus('success')
-          setMessage('Email confirmed successfully! You can now login.')
-          toast({
-            title: 'Verification complete',
-            description: 'You can login now.',
-            variant: 'default',
-          })
-          // Redirect to home after 3 seconds
-          setTimeout(() => {
-            router.push('/')
-          }, 3000)
-        } else {
-          throw new Error('No user data returned')
-        }
-
-      } catch (error: any) {
-        console.error('Email confirmation error:', error)
-        setStatus('error')
-        setMessage(error.message || 'Failed to confirm email. The link may be expired or invalid.')
-      }
-    }
-
-    // Only handle email confirmation if not already authenticated and not OAuth flow
-    if (!user || !profile) {
+    // Handle email confirmation flow if not OAuth
+    if (tokenHash && type === 'signup') {
       handleAuthConfirmation()
     }
-  }, [searchParams, router, toast, user, profile, isLoading])
+  }, [searchParams, router, toast, user, profile, isLoading, hasRedirected])
 
-  // Additional effect to ensure redirect happens even if main effect misses it
-  useEffect(() => {
-    if (user && profile && !isLoading) {
-      const timer = setTimeout(() => {
-        const redirectPath = profile.role === 'pending_player' && !profile.onboarding_completed 
-          ? '/onboarding' 
-          : '/dashboard'
-        console.log('🔄 Secondary redirect check - ensuring redirect happens')
-        router.replace(redirectPath) // Use replace to avoid back button issues
-      }, 2000) // 2 second secondary check
+  // Handle email confirmation flow
+  const handleAuthConfirmation = async () => {
+    try {
+      const tokenHash = searchParams.get('token_hash')
+      const type = searchParams.get('type')
       
-      return () => clearTimeout(timer)
+      if (!tokenHash || type !== 'signup') {
+        throw new Error('Invalid confirmation link')
+      }
+
+      // Verify the token with Supabase
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: 'signup'
+      })
+
+      if (error) {
+        throw error
+      }
+
+      if (data.user) {
+        setStatus('success')
+        setMessage('Email confirmed successfully! You can now login.')
+        toast({
+          title: 'Verification complete',
+          description: 'You can login now.',
+          variant: 'default',
+        })
+        // Redirect to home after 3 seconds
+        setTimeout(() => {
+          router.push('/')
+        }, 3000)
+      } else {
+        throw new Error('No user data returned')
+      }
+
+    } catch (error: any) {
+      console.error('Email confirmation error:', error)
+      setStatus('error')
+      setMessage(error.message || 'Failed to confirm email. The link may be expired or invalid.')
     }
-  }, [user, profile, isLoading, router])
+  }
 
   // Aggressive session check for OAuth flows
   useEffect(() => {

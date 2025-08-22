@@ -40,6 +40,7 @@ export default function AgreementReviewPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false)
+  const [hasRedirected, setHasRedirected] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Load agreement content
@@ -113,12 +114,17 @@ export default function AgreementReviewPage() {
   }, [hasScrolledToBottom, agreementContent])
 
   const handleAccept = async () => {
+    if (submitting || hasRedirected) return
+    
     setSubmitting(true)
     try {
       const success = await acceptAgreement()
       if (success) {
-        toast({ title: "Agreement Accepted", description: "Redirecting to dashboard..." })
-        router.replace('/dashboard')
+        setHasRedirected(true)
+        toast({ title: "Agreement Accepted", description: "Redirecting to Dashboard…" })
+        setTimeout(() => {
+          router.replace('/dashboard')
+        }, 1000)
       } else {
         throw new Error('Failed to accept agreement')
       }
@@ -166,10 +172,13 @@ export default function AgreementReviewPage() {
 
   // Redirect if no agreement needed
   useEffect(() => {
+    if (hasRedirected) return
+    
     if (!authLoading && agreementStatus && !agreementStatus.requiresAgreement) {
-      router.replace('/dashboard')
+      setHasRedirected(true)
+      setTimeout(() => router.replace('/dashboard'), 500)
     }
-  }, [authLoading, agreementStatus, router])
+  }, [authLoading, agreementStatus, router, hasRedirected])
 
   const { startPageLoad, completePageLoad } = usePageLoading()
   
