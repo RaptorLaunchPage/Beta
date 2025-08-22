@@ -31,10 +31,17 @@ export function usePostAuthRedirect(options: UsePostAuthRedirectOptions = {}) {
   const pathname = usePathname()
   const hasRedirected = useRef(false)
   const redirectTimeout = useRef<NodeJS.Timeout | null>(null)
+  const mounted = useRef(true)
 
   useEffect(() => {
-    // Don't redirect if still loading or already redirected
-    if (isLoading || hasRedirected.current || !isAuthenticated || !user || !profile) {
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    // Don't redirect if still loading, already redirected, or not properly authenticated
+    if (isLoading || hasRedirected.current || !isAuthenticated || !user || !profile || !mounted.current) {
       return
     }
 
@@ -81,13 +88,10 @@ export function usePostAuthRedirect(options: UsePostAuthRedirectOptions = {}) {
 
     // Perform redirect with delay
     redirectTimeout.current = setTimeout(() => {
+      if (!mounted.current) return
+      
       // Use router.replace to avoid back button issues
       router.replace(targetPath)
-      
-      // Also use safeRedirect as fallback
-      setTimeout(() => {
-        safeRedirect(targetPath, { delay: 50 })
-      }, 100)
       
     }, actualDelay)
 
@@ -131,7 +135,7 @@ export function usePostAuthRedirect(options: UsePostAuthRedirectOptions = {}) {
     : (profile?.role === 'pending_player' && !profile?.onboarding_completed ? '/onboarding' : '/dashboard')
 
   return {
-    shouldRedirect: !isLoading && isAuthenticated && user && profile && !hasRedirected.current,
+    shouldRedirect: !isLoading && isAuthenticated && user && profile && !hasRedirected.current && mounted.current,
     targetPath: computedTarget,
     isRedirecting: hasRedirected.current
   }

@@ -32,6 +32,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("personal")
+  const [bgmiEditing, setBgmiEditing] = useState(false)
 
   // Profile to display - either target user or current user
   const displayProfile = targetProfile || currentProfile
@@ -286,9 +287,10 @@ export default function ProfilePage() {
         <TabsContent value="bgmi" className="space-y-6">
           <BGMIGamingSection 
             profile={displayProfile}
-            isEditing={false}
+            isEditing={bgmiEditing}
             canEdit={canEdit}
             onUpdate={handleProfileUpdate}
+            onEditToggle={setBgmiEditing}
           />
         </TabsContent>
 

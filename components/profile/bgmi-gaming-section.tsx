@@ -31,10 +31,12 @@ interface BGMIGamingSectionProps {
   isEditing: boolean
   canEdit: boolean
   onUpdate: (updates: Partial<UserProfile>) => void
+  onEditToggle?: (editing: boolean) => void
 }
 
-export function BGMIGamingSection({ profile, isEditing, canEdit, onUpdate }: BGMIGamingSectionProps) {
+export function BGMIGamingSection({ profile, isEditing, canEdit, onUpdate, onEditToggle }: BGMIGamingSectionProps) {
   const { toast } = useToast()
+  const [localEditing, setLocalEditing] = useState(false)
   const [localData, setLocalData] = useState({
     bgmi_id: profile.bgmi_id || '',
     bgmi_tier: (profile.bgmi_tier as any) || '',
@@ -49,6 +51,9 @@ export function BGMIGamingSection({ profile, isEditing, canEdit, onUpdate }: BGM
   })
   
   const [copiedHUD, setCopiedHUD] = useState(false)
+  
+  // Use local editing state if onEditToggle is not provided
+  const currentlyEditing = onEditToggle ? isEditing : localEditing
   
   const gameStats = localData.game_stats as any || {}
   const achievements = localData.achievements as any[] || []
@@ -65,8 +70,25 @@ export function BGMIGamingSection({ profile, isEditing, canEdit, onUpdate }: BGM
     }
   }
   
-  const handleSave = () => {
-    onUpdate(localData)
+  const handleSave = async () => {
+    try {
+      await onUpdate(localData)
+      if (onEditToggle) {
+        onEditToggle(false)
+      } else {
+        setLocalEditing(false)
+      }
+      toast({
+        title: "BGMI Profile Updated",
+        description: "Your BGMI gaming profile has been saved successfully."
+      })
+    } catch (error: any) {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to save BGMI profile",
+        variant: "destructive"
+      })
+    }
   }
   
   const handleCancel = () => {
@@ -82,6 +104,19 @@ export function BGMIGamingSection({ profile, isEditing, canEdit, onUpdate }: BGM
       game_stats: profile.game_stats || {},
       achievements: profile.achievements || []
     })
+    if (onEditToggle) {
+      onEditToggle(false)
+    } else {
+      setLocalEditing(false)
+    }
+  }
+
+  const handleEditClick = () => {
+    if (onEditToggle) {
+      onEditToggle(true)
+    } else {
+      setLocalEditing(true)
+    }
   }
 
   return (
@@ -93,14 +128,19 @@ export function BGMIGamingSection({ profile, isEditing, canEdit, onUpdate }: BGM
             <Target className="h-5 w-5 text-orange-500" />
             <CardTitle className="text-lg">BGMI Profile</CardTitle>
           </div>
-          {canEdit && !isEditing && (
-            <Button variant="ghost" size="sm" className="ml-auto">
+          {canEdit && !currentlyEditing && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="ml-auto"
+              onClick={handleEditClick}
+            >
               <Edit className="h-4 w-4" />
             </Button>
           )}
         </CardHeader>
         <CardContent className="space-y-4">
-          {isEditing ? (
+          {currentlyEditing ? (
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -221,7 +261,7 @@ export function BGMIGamingSection({ profile, isEditing, canEdit, onUpdate }: BGM
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isEditing ? (
+          {currentlyEditing ? (
             <>
               <div className="space-y-2">
                 <Label htmlFor="control_layout">Control Layout</Label>

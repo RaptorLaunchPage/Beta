@@ -25,6 +25,7 @@ function AuthConfirmContent() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
   const [authProgress, setAuthProgress] = useState('Initializing...')
+  const [hasRedirected, setHasRedirected] = useState(false)
   
   // Use unified post-auth redirect hook
   const { isRedirecting } = usePostAuthRedirect({
@@ -33,9 +34,13 @@ function AuthConfirmContent() {
   })
 
   useEffect(() => {
+    // Prevent multiple redirects
+    if (hasRedirected) return
+
     // UNIFIED AUTH CONFIRMATION: Handle redirects with timeout fallback
     if (user && profile && !isLoading) {
       console.log('✅ Auth confirmation: User authenticated, redirecting immediately')
+      setHasRedirected(true)
       
       // Determine redirect path
       let redirectPath = '/dashboard'
@@ -44,9 +49,11 @@ function AuthConfirmContent() {
         console.log('🔄 New user needs onboarding')
       }
       
-      // Immediate redirect - don't wait for auth hook
+      // Single redirect - don't compete with other mechanisms
       console.log(`🚀 Auth confirm: Redirecting to ${redirectPath}`)
-      router.replace(redirectPath) // Use replace to avoid back button issues
+      setTimeout(() => {
+        router.replace(redirectPath)
+      }, 500) // Single 500ms delay
       return
     }
 
@@ -55,7 +62,7 @@ function AuthConfirmContent() {
     const type = searchParams.get('type')
     const isOAuthFlow = !tokenHash && !type
 
-    if (isOAuthFlow) {
+    if (isOAuthFlow && !user) {
       console.log('🔐 OAuth flow detected, waiting for auth state to complete...')
       setAuthProgress('Processing authentication...')
       
@@ -68,22 +75,25 @@ function AuthConfirmContent() {
         }
       }, 1000)
       
-      // Add timeout fallback in case auth hook doesn't trigger
+      // Single timeout fallback - simplified
       const timeoutId = setTimeout(() => {
-        console.log('⚠️ Auth confirmation timeout - checking auth state...')
-        setAuthProgress('Finalizing...')
-        
-        if (user && profile) {
-          const redirectPath = profile.role === 'pending_player' && !profile.onboarding_completed 
-            ? '/onboarding' 
-            : '/dashboard'
-          console.log(`🚀 Timeout fallback: Redirecting to ${redirectPath}`)
-          router.push(redirectPath)
-        } else {
-          console.log('⚠️ No auth state after timeout, redirecting to homepage')
-          router.push('/')
+        if (!hasRedirected) {
+          console.log('⚠️ Auth confirmation timeout - checking auth state...')
+          setAuthProgress('Finalizing...')
+          
+          if (user && profile) {
+            setHasRedirected(true)
+            const redirectPath = profile.role === 'pending_player' && !profile.onboarding_completed 
+              ? '/onboarding' 
+              : '/dashboard'
+            console.log(`🚀 Timeout fallback: Redirecting to ${redirectPath}`)
+            router.replace(redirectPath)
+          } else {
+            console.log('⚠️ No auth state after timeout, redirecting to homepage')
+            router.replace('/')
+          }
         }
-      }, 5000) // 5 second timeout
+      }, 8000) // Increased to 8 seconds for better reliability
       
       return () => {
         clearTimeout(timeoutId)
@@ -135,22 +145,7 @@ function AuthConfirmContent() {
     if (!user || !profile) {
       handleAuthConfirmation()
     }
-  }, [searchParams, router, toast, user, profile, isLoading])
-
-  // Additional effect to ensure redirect happens even if main effect misses it
-  useEffect(() => {
-    if (user && profile && !isLoading) {
-      const timer = setTimeout(() => {
-        const redirectPath = profile.role === 'pending_player' && !profile.onboarding_completed 
-          ? '/onboarding' 
-          : '/dashboard'
-        console.log('🔄 Secondary redirect check - ensuring redirect happens')
-        router.replace(redirectPath) // Use replace to avoid back button issues
-      }, 2000) // 2 second secondary check
-      
-      return () => clearTimeout(timer)
-    }
-  }, [user, profile, isLoading, router])
+  }, [searchParams, router, toast, user, profile, isLoading, hasRedirected])
 
   // Aggressive session check for OAuth flows
   useEffect(() => {
