@@ -141,18 +141,23 @@ export async function GET(request: NextRequest) {
 
 // POST - Create new performance
 export async function POST(request: NextRequest) {
+  console.log('🚀 POST /api/performances - Starting request processing')
+  
   try {
     // Handle CORS
     const corsResponse = handleCors(request)
     if (corsResponse) return corsResponse
 
+    console.log('🔐 Authenticating request...')
     // Authenticate request
     const { user, supabase, error: authError } = await authenticateRequest(request)
     if (authError) {
+      console.error('❌ Authentication failed:', authError)
       return createErrorResponse(authError)
     }
 
     if (!user || !supabase) {
+      console.error('❌ No user or supabase client after authentication')
       return createErrorResponse({
         error: 'Authentication failed',
         code: 'AUTH_FAILED',
@@ -160,9 +165,12 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    console.log('✅ Authentication successful for user:', user.id, 'role:', user.role)
+
     // Check permissions
     const allowedRoles = ['admin', 'manager', 'coach', 'player']
     if (!checkRoleAccess(user.role, allowedRoles)) {
+      console.error('❌ Insufficient permissions for user:', user.role)
       return createErrorResponse({
         error: 'Insufficient permissions to create performance',
         code: 'INSUFFICIENT_PERMISSIONS',
@@ -170,7 +178,9 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    console.log('📦 Parsing request body...')
     const body = await request.json()
+    console.log('📋 Request body received:', JSON.stringify(body, null, 2))
     
     // Handle both legacy and new format
     const {
@@ -185,25 +195,38 @@ export async function POST(request: NextRequest) {
       team_id,
       slot_id,
       
-                  // Legacy format fields (for backward compatibility)
-            match_number,
-            slot,
-            player_id,
-            added_by
-          } = body
+      // Legacy format fields (for backward compatibility)
+      match_number,
+      slot,
+      player_id,
+      added_by
+    } = body
 
-          // Map legacy fields to new format
-          const finalMatchType = match_type || 'practice' // Default to practice if not specified
-          const finalMap = map
-          const finalKills = kills || 0
-          const finalAssists = assists || 0
-          const finalDamage = damage || 0
-          const finalSurvivalTime = survival_time || 0
-          const finalPlacement = placement
-          const finalTeamId = team_id || user.team_id
-          const finalSlotId = slot_id || slot // Use slot_id if provided, otherwise use legacy slot (which is actually a UUID)
-          const finalPlayerId = player_id || user.id
-          const finalMatchNumber = match_number || (finalMatchType === 'tournament' ? 1 : 0)
+    // Map legacy fields to new format
+    const finalMatchType = match_type || 'practice' // Default to practice if not specified
+    const finalMap = map
+    const finalKills = kills || 0
+    const finalAssists = assists || 0
+    const finalDamage = damage || 0
+    const finalSurvivalTime = survival_time || 0
+    const finalPlacement = placement
+    const finalTeamId = team_id || user.team_id
+    const finalSlotId = slot_id || slot // Use slot_id if provided, otherwise use legacy slot (which is actually a UUID)
+    const finalPlayerId = player_id || user.id
+    const finalMatchNumber = match_number || (finalMatchType === 'tournament' ? 1 : 0)
+
+    console.log('🔧 Mapped fields:', {
+      finalMap,
+      finalKills,
+      finalAssists,
+      finalDamage,
+      finalSurvivalTime,
+      finalPlacement,
+      finalTeamId,
+      finalSlotId,
+      finalPlayerId,
+      finalMatchNumber
+    })
 
     // Validate required fields (using the mapped values)
     const requiredFields = ['map', 'kills', 'assists', 'damage', 'survival_time', 'placement']
@@ -217,6 +240,7 @@ export async function POST(request: NextRequest) {
     }, requiredFields)
     
     if (!validation.valid) {
+      console.error('❌ Missing required fields:', validation.missing)
       return createErrorResponse({
         error: `Missing required fields: ${validation.missing.join(', ')}`,
         code: 'MISSING_REQUIRED_FIELDS',
@@ -229,6 +253,7 @@ export async function POST(request: NextRequest) {
     const numericValues = [finalKills, finalAssists, finalDamage, finalSurvivalTime, finalPlacement]
     for (let i = 0; i < numericFields.length; i++) {
       if (typeof numericValues[i] !== 'number' || numericValues[i] < 0) {
+        console.error('❌ Invalid numeric value:', numericFields[i], numericValues[i])
         return createErrorResponse({
           error: `${numericFields[i]} must be a non-negative number`,
           code: 'INVALID_NUMERIC_VALUE',
@@ -240,6 +265,7 @@ export async function POST(request: NextRequest) {
     // For players, ensure they can only create performances for themselves
     if (user.role === 'player') {
       if (finalTeamId && finalTeamId !== user.team_id) {
+        console.error('❌ Player trying to submit for different team:', finalTeamId, 'vs', user.team_id)
         return createErrorResponse({
           error: 'Players can only create performances for their own team',
           code: 'TEAM_ACCESS_DENIED',
@@ -247,6 +273,7 @@ export async function POST(request: NextRequest) {
         })
       }
       if (finalPlayerId !== user.id) {
+        console.error('❌ Player trying to submit for different player:', finalPlayerId, 'vs', user.id)
         return createErrorResponse({
           error: 'Players can only create performances for themselves',
           code: 'PLAYER_ACCESS_DENIED',
@@ -257,6 +284,7 @@ export async function POST(request: NextRequest) {
 
     // For coaches, ensure they can only create performances for their team
     if (user.role === 'coach' && finalTeamId && finalTeamId !== user.team_id) {
+      console.error('❌ Coach trying to submit for different team:', finalTeamId, 'vs', user.team_id)
       return createErrorResponse({
         error: 'Coaches can only create performances for their own team',
         code: 'TEAM_ACCESS_DENIED',
@@ -264,6 +292,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    console.log('💾 Creating performance in database...')
     // Create performance - use correct database fields
     const performanceData = {
       player_id: finalPlayerId,
@@ -280,6 +309,8 @@ export async function POST(request: NextRequest) {
       added_by: user.id
     }
 
+    console.log('📊 Performance data to insert:', JSON.stringify(performanceData, null, 2))
+
     const { data: performance, error: insertError } = await supabase
       .from('performances')
       .insert(performanceData)
@@ -287,7 +318,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (insertError) {
-      console.error('Error creating performance:', insertError)
+      console.error('❌ Database insert error:', insertError)
       return createErrorResponse({
         error: 'Failed to create performance',
         code: 'DATABASE_ERROR',
@@ -296,10 +327,11 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    console.log('✅ Performance created successfully:', performance.id)
     return createSuccessResponse(performance, 'Performance created successfully', 201)
 
   } catch (error) {
-    console.error('Error in performance creation:', error)
+    console.error('❌ Unexpected error in performance creation:', error)
     return createErrorResponse({
       error: 'Internal server error',
       code: 'INTERNAL_ERROR',

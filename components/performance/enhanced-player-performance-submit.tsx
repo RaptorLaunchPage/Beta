@@ -217,7 +217,15 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
     setLoading(true)
     setLastError(null)
     
+    // Prevent multiple submissions
+    if (loading) {
+      console.log('❌ Form submission already in progress, ignoring')
+      return
+    }
+    
     try {
+      console.log('🚀 Starting performance submission...')
+      
       // Resolve target player/team per role
       const targetPlayerId = isStaff ? formData.player_id : profile.id
       const targetTeamId = isStaff ? formData.team_id : profile.team_id
@@ -266,42 +274,88 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
         added_by: profile.id,
       }
 
+      console.log('📦 Submitting payload:', payload)
+
       // Submit performance via API for centralized validation and side effects
       const token = await getToken()
-      const response = await fetch('/api/performances', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      })
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}))
-        throw new Error(err.error || 'Failed to submit performance')
+      if (!token) {
+        throw new Error("Authentication token not available. Please refresh the page and try again.")
       }
 
-      toast({ 
-        title: "Success!", 
-        description: `Performance for Match ${match_number} submitted successfully`,
-        variant: "default"
-      })
+      // Create AbortController for timeout protection
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => {
+        controller.abort()
+      }, 30000) // 30 second timeout
 
-      // Reset form but keep slot selected and for staff keep team and player selections
-      setFormData(prev => ({ 
-        ...prev, 
-        match_number: "", 
-        map: "", 
-        placement: "", 
-        kills: "", 
-        assists: "", 
-        damage: "", 
-        survival_time: "" 
-      }))
-      
-      onPerformanceAdded()
+      try {
+        const response = await fetch('/api/performances', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        })
+
+        clearTimeout(timeoutId)
+
+        console.log('📡 API Response status:', response.status)
+        
+        if (!response.ok) {
+          let errorMessage = 'Failed to submit performance'
+          try {
+            const err = await response.json()
+            errorMessage = err.error || errorMessage
+            console.error('❌ API Error details:', err)
+          } catch (parseError) {
+            const errorText = await response.text()
+            console.error('❌ API Error text:', errorText)
+            errorMessage = `Server error (${response.status}): ${errorText}`
+          }
+          throw new Error(errorMessage)
+        }
+
+        const result = await response.json()
+        console.log('✅ API Response success:', result)
+
+        toast({ 
+          title: "Success!", 
+          description: `Performance for Match ${match_number} submitted successfully`,
+          variant: "default"
+        })
+
+        // Reset form but keep slot selected and for staff keep team and player selections
+        setFormData(prev => ({ 
+          ...prev, 
+          match_number: "", 
+          map: "", 
+          placement: "", 
+          kills: "", 
+          assists: "", 
+          damage: "", 
+          survival_time: "" 
+        }))
+        
+        // Call the callback to refresh data
+        if (onPerformanceAdded) {
+          console.log('🔄 Calling onPerformanceAdded callback...')
+          onPerformanceAdded()
+        }
+
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId)
+        
+        if (fetchError.name === 'AbortError') {
+          throw new Error('Request timed out. Please check your connection and try again.')
+        }
+        
+        throw fetchError
+      }
 
     } catch (error: any) {
+      console.error('❌ Performance submission error:', error)
       setLastError(error.message || "Failed to submit performance data")
       toast({ 
         title: "Error", 
@@ -309,6 +363,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
         variant: "destructive" 
       })
     } finally {
+      console.log('🏁 Form submission completed, setting loading to false')
       setLoading(false)
     }
   }
@@ -383,7 +438,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
                 <Select
                   value={formData.team_id}
                   onValueChange={(val) => setFormData({ ...formData, team_id: val })}
-                  disabled={profile.role === 'coach'}
+                  disabled={profile.role === 'coach' || loading}
                   required
                 >
                   <SelectTrigger>
@@ -402,7 +457,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
                 <Select
                   value={formData.player_id}
                   onValueChange={(val) => setFormData({ ...formData, player_id: val })}
-                  disabled={!formData.team_id}
+                  disabled={!formData.team_id || loading}
                   required
                 >
                   <SelectTrigger>
@@ -423,6 +478,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
               value={formData.slot} 
               onValueChange={(val) => setFormData({ ...formData, slot: val })} 
               required 
+              disabled={loading}
               // When staff selects a team, scope slots to that team for better UX
               {...(isStaff && formData.team_id ? { teamId: formData.team_id } : {})}
             />
@@ -449,6 +505,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
                   value={formData.match_number} 
                   onValueChange={val => setFormData({ ...formData, match_number: val })} 
                   required
+                  disabled={loading}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select which match to submit" />
@@ -495,7 +552,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="map">Map</Label>
-                <Select value={formData.map} onValueChange={val => setFormData({ ...formData, map: val })} required>
+                <Select value={formData.map} onValueChange={val => setFormData({ ...formData, map: val })} required disabled={loading}>
                   <SelectTrigger><SelectValue placeholder="Select map" /></SelectTrigger>
                   <SelectContent>
                     {MAPS.map(map => <SelectItem key={map} value={map}>{map}</SelectItem>)}
@@ -510,6 +567,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
                   value={formData.placement} 
                   onChange={e => setFormData({ ...formData, placement: e.target.value })} 
                   placeholder="Team placement (1-16)"
+                  disabled={loading}
                 />
               </div>
               <div className="space-y-2">
@@ -520,6 +578,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
                   value={formData.kills} 
                   onChange={e => setFormData({ ...formData, kills: e.target.value })} 
                   required 
+                  disabled={loading}
                 />
               </div>
               <div className="space-y-2">
@@ -529,6 +588,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
                   type="number" 
                   value={formData.assists} 
                   onChange={e => setFormData({ ...formData, assists: e.target.value })} 
+                  disabled={loading}
                 />
               </div>
               <div className="space-y-2">
@@ -539,6 +599,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
                   value={formData.damage} 
                   onChange={e => setFormData({ ...formData, damage: e.target.value })} 
                   required 
+                  disabled={loading}
                 />
               </div>
               <div className="space-y-2">
@@ -549,6 +610,7 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
                   value={formData.survival_time} 
                   onChange={e => setFormData({ ...formData, survival_time: e.target.value })} 
                   required 
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -565,9 +627,74 @@ export function EnhancedPlayerPerformanceSubmit({ onPerformanceAdded }: { onPerf
             {loading ? "Submitting..." : `Submit Performance for Match ${formData.match_number || '?'}`}
           </Button>
           
+          {/* Debug test button - only show in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <Button 
+              type="button"
+              variant="outline"
+              onClick={async () => {
+                try {
+                  console.log('🧪 Testing performance submission...')
+                  const token = await getToken()
+                  const response = await fetch('/api/debug-performance-submission', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    }
+                  })
+                  const result = await response.json()
+                  console.log('🧪 Test result:', result)
+                  if (response.ok) {
+                    toast({ 
+                      title: "Test Successful", 
+                      description: "Performance submission test passed",
+                      variant: "default"
+                    })
+                  } else {
+                    toast({ 
+                      title: "Test Failed", 
+                      description: result.error || "Test failed",
+                      variant: "destructive"
+                    })
+                  }
+                } catch (error) {
+                  console.error('🧪 Test error:', error)
+                  toast({ 
+                    title: "Test Error", 
+                    description: "Test failed with error",
+                    variant: "destructive"
+                  })
+                }
+              }}
+              className="w-full mt-2"
+            >
+              🧪 Test Submission (Debug)
+            </Button>
+          )}
+          
           {lastError && (
             <div className="text-red-500 text-sm mt-2 p-3 bg-red-50 rounded-md">
               {lastError}
+            </div>
+          )}
+          
+          {/* Debug panel - only show in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-md text-xs">
+              <div className="font-semibold mb-2">Debug Info:</div>
+              <div>Loading: {loading ? 'true' : 'false'}</div>
+              <div>Slots Loading: {slotsLoading ? 'true' : 'false'}</div>
+              <div>Selected Slot: {selectedSlot ? 'Yes' : 'No'}</div>
+              <div>Match Number: {formData.match_number || 'Not set'}</div>
+              <div>Form Valid: {formData.match_number && selectedSlot ? 'Yes' : 'No'}</div>
+              <div>Staff Mode: {isStaff ? 'Yes' : 'No'}</div>
+              {isStaff && (
+                <>
+                  <div>Team Selected: {formData.team_id ? 'Yes' : 'No'}</div>
+                  <div>Player Selected: {formData.player_id ? 'Yes' : 'No'}</div>
+                </>
+              )}
             </div>
           )}
         </form>
