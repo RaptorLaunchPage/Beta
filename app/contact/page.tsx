@@ -190,21 +190,16 @@ export default function ContactPage() {
         <PublicNavigation />
 
         {/* Title / Intro */}
-        <section className="relative h-[40vh] sm:h-[46vh] w-full pt-14">
-          <div className="absolute inset-0">
-            <div className="h-full w-full bg-gradient-to-b from-black/70 via-black/40 to-transparent" />
-          </div>
-          <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4">
+        <section className="max-w-5xl mx-auto px-4 pt-24 pb-10">
+          <div className="text-center mb-12">
             <FadeInOnScroll>
-              <h1 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-xl">Contact Raptor Esports</h1>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-white drop-shadow-xl">Contact Raptor Esports</h1>
             </FadeInOnScroll>
             <FadeInOnScroll delayMs={120}>
-              <p className="mt-3 max-w-2xl text-white/85">Whether you're a fan, player, or brand — let's connect.</p>
+              <p className="mt-2 text-white/85 max-w-2xl mx-auto">Whether you're a fan, player, or brand — let's connect.</p>
             </FadeInOnScroll>
           </div>
-        </section>
 
-        <section className="max-w-5xl mx-auto px-4 py-10">
           {submitted ? (
             <FadeInOnScroll id="contact-confirm">
               <Card className="bg-black/60 backdrop-blur-md border-white/20 text-white">

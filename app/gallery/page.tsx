@@ -45,25 +45,19 @@ export default function GalleryPage() {
       <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto">
         <PublicNavigation />
 
-        {/* SECTION 1 — Hero */}
-        <section className="relative h-[45vh] sm:h-[52vh] w-full pt-14">
-          <div className="absolute inset-0">
-            <div className="h-full w-full bg-gradient-to-b from-black/70 via-black/40 to-transparent" />
-          </div>
-          <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4">
+        {/* SECTION 1 — Header / Tabs */}
+        <section className="max-w-6xl mx-auto px-4 pt-24 pb-6">
+          <div className="text-center mb-10">
             <FadeInOnScroll>
-              <h1 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-xl">Raptor Moments</h1>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-white drop-shadow-xl">Raptor Moments</h1>
             </FadeInOnScroll>
             <FadeInOnScroll delayMs={120}>
-              <p className="mt-3 max-w-3xl text-white/80">
+              <p className="mt-2 text-white/85 max-w-3xl mx-auto">
                 A glimpse into our matches, training sessions, and behind-the-scenes hustle.
               </p>
             </FadeInOnScroll>
           </div>
-        </section>
 
-        {/* SECTION 2 — Tabs */}
-        <section className="max-w-6xl mx-auto px-4 py-6">
           <ResponsiveTabs
             tabs={tabs}
             defaultValue="all"

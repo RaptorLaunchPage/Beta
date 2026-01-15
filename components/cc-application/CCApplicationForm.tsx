@@ -199,11 +199,6 @@ export default function CCApplicationForm() {
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-4xl mx-auto py-8">
-        <div className="space-y-2 text-center mb-8">
-            <h1 className="text-3xl font-bold">Content Creator Application</h1>
-            <p className="text-muted-foreground">Join the Raptor Esports creator team. Show us what you&apos;ve got!</p>
-        </div>
-
       {/* Section 1: Identity & Platform */}
       <Card>
         <CardHeader>

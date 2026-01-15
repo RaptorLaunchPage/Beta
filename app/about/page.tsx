@@ -16,23 +16,19 @@ export default function AboutPage() {
       <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto">
         <PublicNavigation />
         
-        {/* Hero */}
-        <section className="relative h-[38vh] sm:h-[46vh] w-full pt-14">
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-          <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4">
+        {/* Main Content */}
+        <section className="max-w-6xl mx-auto px-4 pt-24 pb-10">
+          <div className="text-center mb-12">
             <FadeInOnScroll>
-              <h1 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-xl">Powered by AI. Backed by Raptor.</h1>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-white drop-shadow-xl">Powered by AI. Backed by Raptor.</h1>
             </FadeInOnScroll>
             <FadeInOnScroll delayMs={120}>
-              <p className="mt-3 max-w-3xl text-white/80">
+              <p className="mt-2 text-white/85 max-w-3xl mx-auto">
                 Founded in 2025, Raptor Esports combines competitive excellence with cutting-edge technology to empower players.
               </p>
             </FadeInOnScroll>
           </div>
-        </section>
 
-        {/* Intro */}
-        <section className="max-w-6xl mx-auto px-4 py-10">
           <div className="grid md:grid-cols-3 gap-6">
             <FadeInOnScroll delayMs={0}>
               <Card>
