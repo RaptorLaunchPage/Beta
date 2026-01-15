@@ -22,6 +22,7 @@ const PUBLIC_ROUTES = [
   '/incentives',
   '/tier-structure',
   '/apply',
+  '/cc-application',
   '/join-us',
   '/contact',
   '/faq',
