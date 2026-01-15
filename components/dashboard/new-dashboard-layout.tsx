@@ -24,7 +24,8 @@ import {
   ChevronDown,
   CalendarCheck,
   UserPlus,
-  FileText
+  FileText,
+  Video
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -41,7 +42,8 @@ const iconMap = {
   CalendarCheck,
   UserPlus,
   Settings,
-  FileText
+  FileText,
+  Video
 }
 
 interface NewDashboardLayoutProps {
