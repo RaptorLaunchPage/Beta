@@ -45,18 +45,29 @@ export default function PublicSitePage() {
         
         <div className="flex-1">
           {/* Hero */}
-          <section className="relative h-[60vh] sm:h-[70vh] w-full pt-14">
-            <div className="h-full flex flex-col items-center justify-center text-center px-4">
+          <section className="relative min-h-[60vh] sm:min-h-[70vh] w-full pt-24 pb-12 flex items-center justify-center">
+            <div className="flex flex-col items-center justify-center text-center px-4 w-full">
+              {/* Stats */}
+              <FadeInOnScroll className="max-w-6xl w-full mb-12">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <Stat icon={<Users className="h-5 w-5" />} label="Active Teams" value={teamsCount} />
+                  <Stat icon={<Users className="h-5 w-5" />} label="Active Players" value={playersCount} />
+                  <Stat icon={<Calendar className="h-5 w-5" />} label="Total Matches" value={totalMatches} />
+                  <Stat icon={<Trophy className="h-5 w-5" />} label="Total WWCD" value={totalWWCD} />
+                  <Stat icon={<IndianRupee className="h-5 w-5" />} label="Cost Covered" value={costCovered} prefix="₹" />
+                </div>
+              </FadeInOnScroll>
+
               <FadeInOnScroll>
                 <h1 className="text-4xl sm:text-6xl font-extrabold drop-shadow-xl text-white">
                   Next-Gen Esports Org — Powered by AI, Driven by Data & Passion.
                 </h1>
               </FadeInOnScroll>
               <FadeInOnScroll delayMs={120}>
-                <p className="mt-4 text-white/80 max-w-3xl">Cinematic performance. Data-backed decisions. Build your legacy with us.</p>
+                <p className="mt-4 text-white/80 max-w-3xl mx-auto">Cinematic performance. Data-backed decisions. Build your legacy with us.</p>
               </FadeInOnScroll>
               <FadeInOnScroll delayMs={240}>
-                <div className="flex gap-4 mt-8">
+                <div className="flex gap-4 mt-8 justify-center">
                   <Link href="/join-us"
                     className={`${getButtonStyle('primary')} px-5 py-2 rounded-md font-semibold`}>
                     Join Us
@@ -69,17 +80,6 @@ export default function PublicSitePage() {
               </FadeInOnScroll>
             </div>
           </section>
-
-          {/* Stats */}
-          <FadeInOnScroll as="section" className="max-w-6xl mx-auto px-4 py-10">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <Stat icon={<Users className="h-5 w-5" />} label="Active Teams" value={teamsCount} />
-              <Stat icon={<Users className="h-5 w-5" />} label="Active Players" value={playersCount} />
-              <Stat icon={<Calendar className="h-5 w-5" />} label="Total Matches" value={totalMatches} />
-              <Stat icon={<Trophy className="h-5 w-5" />} label="Total WWCD" value={totalWWCD} />
-              <Stat icon={<IndianRupee className="h-5 w-5" />} label="Cost Covered" value={costCovered} prefix="₹" />
-            </div>
-          </FadeInOnScroll>
         </div>
         
         <PublicFooter />
