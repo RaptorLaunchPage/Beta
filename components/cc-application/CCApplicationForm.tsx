@@ -106,6 +106,7 @@ const steps = [
 export default function CCApplicationForm() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [growthFile, setGrowthFile] = useState<File | null>(null);
   const [analyticsFile, setAnalyticsFile] = useState<File | null>(null);
   const router = useRouter();
@@ -205,7 +206,8 @@ export default function CCApplicationForm() {
       if (!res.ok) throw new Error(result.error || "Submission failed");
 
       toast.success("Application submitted successfully!");
-      router.push('/join-us?success=true');
+      setIsSuccess(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -254,6 +256,28 @@ export default function CCApplicationForm() {
       {errors[name] && <p className="text-red-500 text-xs">{errors[name]?.message as string}</p>}
     </div>
   );
+
+  if (isSuccess) {
+    return (
+      <Card className="max-w-2xl mx-auto py-8">
+        <CardContent className="flex flex-col items-center text-center space-y-4">
+          <div className="rounded-full bg-green-500/20 p-4">
+            <CheckCircle2 className="h-12 w-12 text-green-500" />
+          </div>
+          <h2 className="text-2xl font-bold">Application Submitted!</h2>
+          <p className="text-muted-foreground max-w-md">
+            Thank you for applying to be a Content Creator at Raptor Esports. We will review your application and get back to you soon.
+          </p>
+          <div className="flex gap-4 pt-4">
+            <Button variant="outline" onClick={() => router.push('/')}>Return Home</Button>
+            <Button onClick={() => window.open(process.env.NEXT_PUBLIC_DISCORD_INVITE || 'https://discord.gg/raptoresports', '_blank')}>
+              Join Discord
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-2xl mx-auto py-4">
