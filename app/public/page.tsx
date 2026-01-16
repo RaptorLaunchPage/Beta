@@ -5,7 +5,7 @@ import { VideoBackground } from "@/components/video-background"
 import { FadeInOnScroll } from "@/components/ui/fade-in-on-scroll"
 import { PublicNavigation } from "@/components/public/PublicNavigation"
 import { PublicFooter } from "@/components/public/PublicFooter"
-import { Circular3DCarousel } from "@/components/public/Circular3DCarousel"
+import { StatsMarquee } from "@/components/public/StatsMarquee"
 import { getButtonStyle } from "@/lib/global-theme"
 import Link from "next/link"
 
@@ -46,7 +46,7 @@ export default function PublicSitePage() {
         
         <div className="flex-1">
           {/* Hero */}
-          <section className="relative min-h-[60vh] sm:min-h-[70vh] w-full pt-24 pb-12 flex items-center justify-center">
+          <section className="relative min-h-[50vh] sm:min-h-[60vh] w-full pt-28 pb-8 flex items-center justify-center">
             <div className="flex flex-col items-center justify-center text-center px-4 w-full">
 
               <FadeInOnScroll>
@@ -58,27 +58,23 @@ export default function PublicSitePage() {
                 <p className="mt-4 text-white/80 max-w-3xl mx-auto">Cinematic performance. Data-backed decisions. Build your legacy with us.</p>
               </FadeInOnScroll>
               <FadeInOnScroll delayMs={240}>
-                <div className="flex gap-4 mt-8 justify-center mb-12">
-                  <Link href="/join-us"
-                    className={`${getButtonStyle('primary')} px-5 py-2 rounded-md font-semibold`}>
-                    Join Us
-                  </Link>
+                <div className="mt-8 mb-4">
                   <Link href="/incentives"
-                    className={`${getButtonStyle('outline')} px-5 py-2 rounded-md font-semibold`}>
+                    className={`${getButtonStyle('outline')} px-6 py-2.5 rounded-full font-semibold border-white/30 hover:bg-white/10 backdrop-blur-sm transition-all`}>
                     What's Covered
                   </Link>
                 </div>
               </FadeInOnScroll>
 
-              {/* Animated Cards Section - Replaces previous Stat grid */}
-              <FadeInOnScroll delayMs={360}>
-                <section className="w-full max-w-6xl mx-auto">
-                  <Circular3DCarousel stats={stats} />
-                </section>
-              </FadeInOnScroll>
-
             </div>
           </section>
+
+          {/* Marquee Section */}
+          <FadeInOnScroll delayMs={300}>
+            <section className="w-full">
+              <StatsMarquee stats={stats} />
+            </section>
+          </FadeInOnScroll>
 
         </div>
         

@@ -93,7 +93,7 @@ export function PublicNavigation() {
           {/* On mobile, we might want to hide Join Us or make it smaller, but user said 'globally' */}
           <Link
             href="/join-us"
-            className={`hidden xs:inline-flex px-2.5 sm:px-3 py-1.5 rounded-md font-semibold text-xs sm:text-sm cursor-pointer whitespace-nowrap ${getButtonStyle('secondary')}`}
+            className={`hidden sm:inline-flex px-2.5 sm:px-3 py-1.5 rounded-md font-semibold text-xs sm:text-sm cursor-pointer whitespace-nowrap ${getButtonStyle('secondary')}`}
           >
             Join Us
           </Link>

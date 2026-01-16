@@ -1,7 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { SecureProfileCreation } from '@/lib/secure-profile-creation'
 import SessionStorage, { SessionData, TokenInfo } from '@/lib/session-storage'
-import { isAgreementRole, getRequiredAgreementVersion } from '@/lib/agreement-versions'
 import GlobalLoadingManager from '@/lib/global-loading-manager'
 import type { Session, User } from '@supabase/supabase-js'
 
@@ -14,7 +13,7 @@ export interface AuthState {
   agreementStatus: {
     requiresAgreement: boolean
     isChecked: boolean
-    status?: 'missing' | 'outdated' | 'declined' | 'pending' | 'current' | 'bypassed' | 'error'
+    status?: 'bypassed'
     current_version?: number
     required_version?: number
   }
@@ -346,8 +345,8 @@ class AuthFlowV2Manager {
   // Set authenticated state with profile
   private async setAuthenticatedState(sessionData: SessionData, profile: any, shouldRedirect: boolean = false): Promise<AuthFlowResult> {
     try {
-      // Check agreement status
-      const agreementStatus = await this.checkAgreementStatus(profile)
+      // Check agreement status - skipped as module removed
+      const agreementStatus = { requiresAgreement: false, isChecked: true, status: 'bypassed' } as const
 
       // Update auth state - ENSURE loading is false
       this.setState({
@@ -362,14 +361,7 @@ class AuthFlowV2Manager {
       
       console.log('✅ Authentication state set successfully - isLoading: false')
 
-      // Priority 1: Agreement requirements
-      if (agreementStatus.requiresAgreement) {
-        return {
-          success: true,
-          shouldRedirect: true,
-          redirectPath: '/agreement-review'
-        }
-      }
+      // Priority 1: Agreement requirements - Removed
 
       // Priority 2: Onboarding requirements (pending_player who hasn't completed onboarding)
       if (profile.role === 'pending_player' && !profile.onboarding_completed) {
@@ -489,84 +481,6 @@ class AuthFlowV2Manager {
     }
   }
 
-  // Fast agreement status check
-  private async checkAgreementStatus(profile: any): Promise<typeof this.state.agreementStatus> {
-    try {
-      if (!isAgreementRole(profile.role)) {
-        return {
-          requiresAgreement: false,
-          isChecked: true,
-          status: 'bypassed'
-        }
-      }
-
-      const requiredVersion = getRequiredAgreementVersion(profile.role)
-      
-      const { data: agreement, error } = await supabase
-        .from('user_agreements')
-        .select('*')
-        .eq('user_id', profile.id)
-        .eq('role', profile.role)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (error && error.code !== 'PGRST116') {
-        console.warn('⚠️ Agreement check failed:', error.message)
-        return {
-          requiresAgreement: false,
-          isChecked: true,
-          status: 'bypassed'
-        }
-      }
-
-      if (!agreement) {
-        return {
-          requiresAgreement: true,
-          isChecked: true,
-          status: 'missing',
-          required_version: requiredVersion
-        }
-      }
-
-      if (agreement.agreement_version < requiredVersion) {
-        return {
-          requiresAgreement: true,
-          isChecked: true,
-          status: 'outdated',
-          current_version: agreement.agreement_version,
-          required_version: requiredVersion
-        }
-      }
-
-      if (agreement.status !== 'accepted') {
-        return {
-          requiresAgreement: true,
-          isChecked: true,
-          status: agreement.status as any,
-          current_version: agreement.agreement_version,
-          required_version: requiredVersion
-        }
-      }
-
-      return {
-        requiresAgreement: false,
-        isChecked: true,
-        status: 'current',
-        current_version: agreement.agreement_version,
-        required_version: requiredVersion
-      }
-
-    } catch (error: any) {
-      console.error('❌ Agreement status check failed:', error)
-      return {
-        requiresAgreement: false,
-        isChecked: true,
-        status: 'bypassed'
-      }
-    }
-  }
-
   // Sign in
   async signIn(email: string, password: string): Promise<AuthFlowResult> {
     try {
@@ -680,55 +594,9 @@ class AuthFlowV2Manager {
     }
   }
 
-  // Accept agreement
+  // Accept agreement - Removed
   async acceptAgreement(): Promise<boolean> {
-    try {
-      const { profile } = this.state
-      if (!profile) {
-        throw new Error('No profile available')
-      }
-
-      const token = SessionStorage.getAccessToken()
-      if (!token) {
-        throw new Error('No access token available')
-      }
-
-      const requiredVersion = getRequiredAgreementVersion(profile.role)
-
-      const response = await fetch('/api/agreements', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          role: profile.role,
-          version: requiredVersion,
-          status: 'accepted'
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to accept agreement: ${response.statusText}`)
-      }
-
-      // Update agreement status
-      this.setState({
-        agreementStatus: {
-          requiresAgreement: false,
-          isChecked: true,
-          status: 'current',
-          current_version: requiredVersion,
-          required_version: requiredVersion
-        }
-      })
-
-      return true
-
-    } catch (error: any) {
-      console.error('❌ Agreement acceptance failed:', error)
-      return false
-    }
+    return true
   }
 
   // Update profile
