@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendDiscordWebhook } from "@/lib/discord-webhook";
 
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // Use Service Role Key for backend ops
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 // --- Eligibility Logic ---
 function checkEligibility(data: any): boolean {
   // Section 1: Identity & Platform
@@ -113,6 +108,17 @@ function buildDiscordPayload(data: any) {
 }
 
 export async function POST(req: NextRequest) {
+  // Initialize Supabase client lazily inside the handler
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('Missing Supabase credentials');
+    return NextResponse.json({ success: false, error: 'Internal configuration error' }, { status: 500 });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
   try {
     const formData = await req.formData();
     const rawData: any = {};

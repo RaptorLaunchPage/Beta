@@ -11,6 +11,7 @@ import { Link2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { motion } from "framer-motion"
 import { getButtonStyle } from "@/lib/global-theme"
+import { FadeInOnScroll } from "@/components/ui/fade-in-on-scroll"
 import Head from "next/head"
 import Link from "next/link"
 
