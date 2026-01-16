@@ -9,6 +9,7 @@ import { Trophy, Users, Calendar, IndianRupee } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { PublicNavigation } from "@/components/public/PublicNavigation"
 import { PublicFooter } from "@/components/public/PublicFooter"
+import { Circular3DCarousel } from "@/components/public/Circular3DCarousel"
 import { getButtonStyle } from "@/lib/global-theme"
 import Link from "next/link"
 
@@ -80,6 +81,13 @@ export default function PublicSitePage() {
               </FadeInOnScroll>
             </div>
           </section>
+
+          {/* New Animated Cards Section */}
+          <FadeInOnScroll>
+            <section className="w-full">
+              <Circular3DCarousel />
+            </section>
+          </FadeInOnScroll>
         </div>
         
         <PublicFooter />
