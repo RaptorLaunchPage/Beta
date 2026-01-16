@@ -137,6 +137,16 @@ export const DASHBOARD_MODULES: DashboardModule[] = [
     mobileOrder: 11
   },
   {
+    id: 'cc-applications',
+    title: 'CC Applications',
+    description: 'Manage content creator applications',
+    icon: 'Video',
+    path: '/dashboard/admin/cc-applications',
+    allowedRoles: ['admin', 'manager'],
+    showInNavigation: true,
+    mobileOrder: 12
+  },
+  {
     id: 'media',
     title: 'Media',
     description: 'Upload and manage media assets',
