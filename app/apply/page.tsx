@@ -13,11 +13,11 @@ export const metadata: Metadata = {
 export default function ApplyPage() {
   return (
     <VideoBackground>
-      <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto">
+      <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto flex flex-col">
         <PublicNavigation />
 
         {/* Main Content */}
-        <section className="max-w-5xl mx-auto px-4 pt-24 pb-10">
+        <section className="max-w-5xl mx-auto px-4 pt-24 pb-10 flex-1 w-full">
           <div className="text-center mb-8">
             <FadeInOnScroll>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-white drop-shadow-xl">

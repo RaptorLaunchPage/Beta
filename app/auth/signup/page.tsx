@@ -157,7 +157,7 @@ export default function SignUpPage() {
       <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto flex flex-col">
         <PublicNavigation />
         
-        <div className="flex-1 flex items-center justify-center p-4">
+        <div className="flex-1 w-full flex items-center justify-center p-4">
           {/* Subtle white glowing dots */}
           <div className="pointer-events-none fixed left-1/4 top-1/3 z-10 h-6 w-6 rounded-full bg-white opacity-60 blur-2xl animate-pulse" />
           <div className="pointer-events-none fixed right-1/4 bottom-1/4 z-10 h-3 w-3 rounded-full bg-white opacity-40 blur-md animate-pulse" />
