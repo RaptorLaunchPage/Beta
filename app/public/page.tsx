@@ -2,11 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { VideoBackground } from "@/components/video-background"
-import { Card, CardContent } from "@/components/ui/card"
 import { FadeInOnScroll } from "@/components/ui/fade-in-on-scroll"
-import { CountUp } from "@/components/ui/count-up"
-import { Trophy, Users, Calendar, IndianRupee } from "lucide-react"
-import { supabase } from "@/lib/supabase"
 import { PublicNavigation } from "@/components/public/PublicNavigation"
 import { PublicFooter } from "@/components/public/PublicFooter"
 import { Circular3DCarousel } from "@/components/public/Circular3DCarousel"
@@ -14,11 +10,13 @@ import { getButtonStyle } from "@/lib/global-theme"
 import Link from "next/link"
 
 export default function PublicSitePage() {
-  const [teamsCount, setTeamsCount] = useState<number>(0)
-  const [playersCount, setPlayersCount] = useState<number>(0)
-  const [totalMatches, setTotalMatches] = useState<number>(0)
-  const [totalWWCD, setTotalWWCD] = useState<number>(0)
-  const [costCovered, setCostCovered] = useState<number>(0)
+  const [stats, setStats] = useState({
+    teamsCount: 0,
+    playersCount: 0,
+    totalMatches: 0,
+    totalWWCD: 0,
+    costCovered: 0
+  })
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -27,11 +25,13 @@ export default function PublicSitePage() {
         if (!res.ok) throw new Error('Failed to fetch stats')
         const payload = await res.json()
         const s = payload.stats || {}
-        setTeamsCount(Number(s.activeTeams || 0))
-        setPlayersCount(Number(s.activePlayers || 0))
-        setTotalMatches(Number(s.totalMatches || 0))
-        setTotalWWCD(Number(s.totalWWCD || 0))
-        setCostCovered(Number(s.costCovered || 0))
+        setStats({
+          teamsCount: Number(s.activeTeams || 0),
+          playersCount: Number(s.activePlayers || 0),
+          totalMatches: Number(s.totalMatches || 0),
+          totalWWCD: Number(s.totalWWCD || 0),
+          costCovered: Number(s.costCovered || 0)
+        })
       } catch {}
     }
     fetchCounts()
@@ -48,16 +48,6 @@ export default function PublicSitePage() {
           {/* Hero */}
           <section className="relative min-h-[60vh] sm:min-h-[70vh] w-full pt-24 pb-12 flex items-center justify-center">
             <div className="flex flex-col items-center justify-center text-center px-4 w-full">
-              {/* Stats */}
-              <FadeInOnScroll className="max-w-6xl w-full mb-12">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <Stat icon={<Users className="h-5 w-5" />} label="Active Teams" value={teamsCount} />
-                  <Stat icon={<Users className="h-5 w-5" />} label="Active Players" value={playersCount} />
-                  <Stat icon={<Calendar className="h-5 w-5" />} label="Total Matches" value={totalMatches} />
-                  <Stat icon={<Trophy className="h-5 w-5" />} label="Total WWCD" value={totalWWCD} />
-                  <Stat icon={<IndianRupee className="h-5 w-5" />} label="Cost Covered" value={costCovered} prefix="₹" />
-                </div>
-              </FadeInOnScroll>
 
               <FadeInOnScroll>
                 <h1 className="text-4xl sm:text-6xl font-extrabold drop-shadow-xl text-white">
@@ -68,7 +58,7 @@ export default function PublicSitePage() {
                 <p className="mt-4 text-white/80 max-w-3xl mx-auto">Cinematic performance. Data-backed decisions. Build your legacy with us.</p>
               </FadeInOnScroll>
               <FadeInOnScroll delayMs={240}>
-                <div className="flex gap-4 mt-8 justify-center">
+                <div className="flex gap-4 mt-8 justify-center mb-12">
                   <Link href="/join-us"
                     className={`${getButtonStyle('primary')} px-5 py-2 rounded-md font-semibold`}>
                     Join Us
@@ -79,40 +69,21 @@ export default function PublicSitePage() {
                   </Link>
                 </div>
               </FadeInOnScroll>
+
+              {/* Animated Cards Section - Replaces previous Stat grid */}
+              <FadeInOnScroll delayMs={360}>
+                <section className="w-full max-w-6xl mx-auto">
+                  <Circular3DCarousel stats={stats} />
+                </section>
+              </FadeInOnScroll>
+
             </div>
           </section>
 
-          {/* New Animated Cards Section */}
-          <FadeInOnScroll>
-            <section className="w-full">
-              <Circular3DCarousel />
-            </section>
-          </FadeInOnScroll>
         </div>
         
         <PublicFooter />
       </div>
     </VideoBackground>
-  )
-}
-
-function Stat({ icon, label, value, prefix }: { icon: React.ReactNode; label: string; value: number; prefix?: string }) {
-  const display = value > 0 ? (
-    <>
-      {prefix ? <span className="mr-1">{prefix}</span> : null}
-      <CountUp value={value} duration={2000} delay={500} />
-    </>
-  ) : (
-    <span className="opacity-70">—</span>
-  )
-  return (
-    <Card className="h-full">
-      <CardContent className="p-5 sm:p-6 text-left text-white h-full flex flex-col justify-between">
-        <div className="flex items-center gap-2 text-white/80 mb-2">{icon}<span className="text-xs sm:text-sm">{label}</span></div>
-        <div className="font-bold tabular-nums leading-tight whitespace-nowrap text-xl sm:text-2xl md:text-3xl">
-          {display}
-        </div>
-      </CardContent>
-    </Card>
   )
 }
