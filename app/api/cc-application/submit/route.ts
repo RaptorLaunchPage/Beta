@@ -16,9 +16,6 @@ function checkEligibility(data: any): boolean {
   // Avg stream duration >= 1.5
   if ((data.avg_stream_duration || 0) < 1.5) return false;
 
-  // Typical streaming days >= 4
-  if (Array.isArray(data.typical_streaming_days) && data.typical_streaming_days.length < 4) return false;
-
   // Avg concurrent viewers >= 20
   if ((data.avg_concurrent_viewers || 0) < 20) return false;
 
@@ -133,17 +130,10 @@ export async function POST(req: NextRequest) {
       if (value === 'true') rawData[key] = true;
       else if (value === 'false') rawData[key] = false;
       // Handle numbers
-      else if (!isNaN(Number(value)) && value !== '' && key !== 'social_links' && key !== 'typical_streaming_days') {
+      else if (!isNaN(Number(value)) && value !== '' && key !== 'social_links') {
          rawData[key] = Number(value);
       }
       // Handle Arrays/JSON
-      else if (key === 'typical_streaming_days') {
-         try {
-             rawData[key] = JSON.parse(value as string);
-         } catch {
-             rawData[key] = [value];
-         }
-      }
       else if (key === 'social_links') {
           try {
              rawData[key] = JSON.parse(value as string);

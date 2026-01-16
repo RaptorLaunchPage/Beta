@@ -39,7 +39,6 @@ const formSchema = z.object({
   // Section 3: Streaming Habits
   streams_per_week: z.number().min(0),
   avg_stream_duration: z.number().min(0),
-  typical_streaming_days: z.array(z.string()).min(1, "Select at least one day"),
   fixed_schedule: z.boolean(),
 
   // Section 4: Live Audience Metrics
@@ -92,7 +91,7 @@ type FormValues = z.infer<typeof formSchema>;
 const steps = [
   { id: 'identity', title: 'Identity & Platform', fields: ['name', 'email', 'primary_platform', 'secondary_platform', 'primarily_streams_bgmi'] },
   { id: 'metrics', title: 'Platform Metrics', fields: ['instagram_follower_count', 'youtube_subscriber_count', 'avg_growth_last_30_days'] },
-  { id: 'habits', title: 'Streaming Habits', fields: ['streams_per_week', 'avg_stream_duration', 'typical_streaming_days', 'fixed_schedule'] },
+  { id: 'habits', title: 'Streaming Habits', fields: ['streams_per_week', 'avg_stream_duration', 'fixed_schedule'] },
   { id: 'audience', title: 'Live Audience', fields: ['avg_concurrent_viewers', 'avg_total_live_views', 'chat_activity_rating'] },
   { id: 'content', title: 'Content Output', fields: ['reels_posted_last_30_days', 'avg_views_last_5_reels', 'youtube_long_videos_last_30_days', 'comfortable_clipping_streams', 'comfortable_posting_reels_weekly'] },
   { id: 'consistency', title: 'Consistency', fields: ['longest_inactivity_gap_days', 'missed_planned_streams', 'uses_content_calendar'] },
@@ -121,7 +120,6 @@ export default function CCApplicationForm() {
       primarily_streams_bgmi: false,
       streams_per_week: 0,
       avg_stream_duration: 0,
-      typical_streaming_days: [],
       fixed_schedule: false,
       avg_concurrent_viewers: 0,
       avg_total_live_views: 0,
@@ -149,7 +147,6 @@ export default function CCApplicationForm() {
   const primaryPlatform = watch("primary_platform");
   const streamsPerWeek = watch("streams_per_week");
   const avgStreamDuration = watch("avg_stream_duration");
-  const typicalStreamingDays = watch("typical_streaming_days");
   const avgConcurrentViewers = watch("avg_concurrent_viewers");
   const avgTotalLiveViews = watch("avg_total_live_views");
   const reelsPosted = watch("reels_posted_last_30_days");
@@ -191,11 +188,7 @@ export default function CCApplicationForm() {
         if (key.startsWith('social_links_')) return;
         if (value === undefined || value === null) return;
 
-        if (key === 'typical_streaming_days') {
-           formData.append(key, JSON.stringify(value));
-        } else {
-           formData.append(key, value.toString());
-        }
+        formData.append(key, value.toString());
       });
 
       const socialLinks: any = {};
@@ -400,30 +393,6 @@ export default function CCApplicationForm() {
                 <Label>Avg Stream Duration (Hours) *</Label>
                 <Input type="number" step="0.1" {...register("avg_stream_duration", { valueAsNumber: true })} />
                 <Warning show={avgStreamDuration > 0 && avgStreamDuration < 1.5} message="Recommended: 1.5+ hours" />
-              </div>
-              <div className="space-y-2">
-                <Label className="mb-2 block">Typical Streaming Days *</Label>
-                <div className="flex flex-wrap gap-2">
-                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                    <div key={day} className="flex items-center space-x-2 border p-2 rounded-md hover:bg-accent cursor-pointer" onClick={() => {
-                        const current = getValues("typical_streaming_days") || [];
-                        if (current.includes(day)) setValue("typical_streaming_days", current.filter(d => d !== day));
-                        else setValue("typical_streaming_days", [...current, day]);
-                    }}>
-                      <Checkbox
-                        id={`day-${day}`}
-                        checked={(typicalStreamingDays || []).includes(day)}
-                        onCheckedChange={(checked) => {
-                          const current = getValues("typical_streaming_days") || [];
-                          if (checked) setValue("typical_streaming_days", [...current, day]);
-                          else setValue("typical_streaming_days", current.filter(d => d !== day));
-                        }}
-                      />
-                      <Label htmlFor={`day-${day}`} className="cursor-pointer">{day}</Label>
-                    </div>
-                  ))}
-                </div>
-                <Warning show={(typicalStreamingDays || []).length > 0 && (typicalStreamingDays || []).length < 4} message="Recommended: 4+ days" />
               </div>
               <BooleanField name="fixed_schedule" label="Do you have a fixed schedule?" control={control} />
             </div>
