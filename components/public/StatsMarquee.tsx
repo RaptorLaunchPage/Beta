@@ -45,7 +45,7 @@ export function StatsMarquee({ stats }: StatsMarqueeProps) {
       id: 3,
       title: "Total Matches",
       value: stats.totalMatches,
-      description: "Matches hosted to date.",
+      description: "matches played till date.",
       details: "High-quality scrims and tournaments.",
       icon: Calendar,
     },

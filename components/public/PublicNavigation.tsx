@@ -12,7 +12,7 @@ import { Menu } from "lucide-react"
 const NAV_ITEMS = [
   { name: "Home", href: "/public" },
   { name: "About", href: "/about" },
-  { name: "Rewards", href: "/incentives" },
+  { name: "Sponsorship", href: "/incentives" },
   { name: "Tier", href: "/tier-structure" },
   { name: "Apply", href: "/apply" },
   { name: "FAQ", href: "/faq" },

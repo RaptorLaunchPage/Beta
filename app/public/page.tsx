@@ -13,8 +13,8 @@ export default function PublicSitePage() {
   const [stats, setStats] = useState({
     teamsCount: 0,
     playersCount: 0,
-    totalMatches: 0,
-    totalWWCD: 0,
+    totalMatches: 5289,
+    totalWWCD: 2198,
     costCovered: 0
   })
 
@@ -28,8 +28,8 @@ export default function PublicSitePage() {
         setStats({
           teamsCount: Number(s.activeTeams || 0),
           playersCount: Number(s.activePlayers || 0),
-          totalMatches: Number(s.totalMatches || 0),
-          totalWWCD: Number(s.totalWWCD || 0),
+          totalMatches: 5289 + Number(s.totalMatches || 0),
+          totalWWCD: 2198 + Number(s.totalWWCD || 0),
           costCovered: Number(s.costCovered || 0)
         })
       } catch {}
@@ -46,7 +46,7 @@ export default function PublicSitePage() {
         
         <div className="flex-1">
           {/* Hero */}
-          <section className="relative min-h-[50vh] sm:min-h-[60vh] w-full pt-28 pb-8 flex items-center justify-center">
+          <section className="relative min-h-[40vh] sm:min-h-[50vh] w-full pt-28 pb-0 flex items-center justify-center">
             <div className="flex flex-col items-center justify-center text-center px-4 w-full">
 
               <FadeInOnScroll>
@@ -56,14 +56,6 @@ export default function PublicSitePage() {
               </FadeInOnScroll>
               <FadeInOnScroll delayMs={120}>
                 <p className="mt-4 text-white/80 max-w-3xl mx-auto">Cinematic performance. Data-backed decisions. Build your legacy with us.</p>
-              </FadeInOnScroll>
-              <FadeInOnScroll delayMs={240}>
-                <div className="mt-8 mb-4">
-                  <Link href="/incentives"
-                    className={`${getButtonStyle('outline')} px-6 py-2.5 rounded-full font-semibold border-white/30 hover:bg-white/10 backdrop-blur-sm transition-all`}>
-                    What's Covered
-                  </Link>
-                </div>
               </FadeInOnScroll>
 
             </div>
