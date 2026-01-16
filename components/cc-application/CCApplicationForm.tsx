@@ -34,12 +34,11 @@ const formSchema = z.object({
   // Section 2: Platform Metrics
   instagram_follower_count: z.number().optional(),
   youtube_subscriber_count: z.number().optional(),
-  avg_growth_last_30_days: z.number().optional(),
+  avg_growth_last_30_days: z.union([z.number(), z.nan()]).optional(),
 
   // Section 3: Streaming Habits
   streams_per_week: z.number().min(0),
   avg_stream_duration: z.number().min(0),
-  typical_streaming_days: z.array(z.string()).min(1, "Select at least one day"),
   fixed_schedule: z.boolean(),
 
   // Section 4: Live Audience Metrics
@@ -92,7 +91,7 @@ type FormValues = z.infer<typeof formSchema>;
 const steps = [
   { id: 'identity', title: 'Identity & Platform', fields: ['name', 'email', 'primary_platform', 'secondary_platform', 'primarily_streams_bgmi'] },
   { id: 'metrics', title: 'Platform Metrics', fields: ['instagram_follower_count', 'youtube_subscriber_count', 'avg_growth_last_30_days'] },
-  { id: 'habits', title: 'Streaming Habits', fields: ['streams_per_week', 'avg_stream_duration', 'typical_streaming_days', 'fixed_schedule'] },
+  { id: 'habits', title: 'Streaming Habits', fields: ['streams_per_week', 'avg_stream_duration', 'fixed_schedule'] },
   { id: 'audience', title: 'Live Audience', fields: ['avg_concurrent_viewers', 'avg_total_live_views', 'chat_activity_rating'] },
   { id: 'content', title: 'Content Output', fields: ['reels_posted_last_30_days', 'avg_views_last_5_reels', 'youtube_long_videos_last_30_days', 'comfortable_clipping_streams', 'comfortable_posting_reels_weekly'] },
   { id: 'consistency', title: 'Consistency', fields: ['longest_inactivity_gap_days', 'missed_planned_streams', 'uses_content_calendar'] },
@@ -106,6 +105,7 @@ const steps = [
 export default function CCApplicationForm() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [growthFile, setGrowthFile] = useState<File | null>(null);
   const [analyticsFile, setAnalyticsFile] = useState<File | null>(null);
   const router = useRouter();
@@ -120,7 +120,6 @@ export default function CCApplicationForm() {
       primarily_streams_bgmi: false,
       streams_per_week: 0,
       avg_stream_duration: 0,
-      typical_streaming_days: [],
       fixed_schedule: false,
       avg_concurrent_viewers: 0,
       avg_total_live_views: 0,
@@ -144,20 +143,30 @@ export default function CCApplicationForm() {
     mode: "onChange"
   });
 
-  const { watch, control, register, formState: { errors }, trigger, getValues } = form;
+  const { watch, control, register, formState: { errors }, trigger, getValues, setValue } = form;
   const primaryPlatform = watch("primary_platform");
   const streamsPerWeek = watch("streams_per_week");
   const avgStreamDuration = watch("avg_stream_duration");
-  const typicalStreamingDays = watch("typical_streaming_days");
   const avgConcurrentViewers = watch("avg_concurrent_viewers");
   const avgTotalLiveViews = watch("avg_total_live_views");
   const reelsPosted = watch("reels_posted_last_30_days");
   const avgReelViews = watch("avg_views_last_5_reels");
   const inactivityGap = watch("longest_inactivity_gap_days");
   const missedStreams = watch("missed_planned_streams");
+  const avgGrowth = watch("avg_growth_last_30_days");
 
   const nextStep = async () => {
     const fields = steps[currentStep].fields;
+
+    // Custom check for Step 1 (Metrics): Screenshot required if growth > 0
+    if (currentStep === 1) { // Step index 1 is 'metrics' in the steps array
+       const growth = getValues("avg_growth_last_30_days");
+       if (growth && growth > 0 && !growthFile) {
+           toast.error("Please upload a screenshot proof for your growth metrics.");
+           return;
+       }
+    }
+
     const isValid = await trigger(fields as any);
     if (isValid) {
       setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
@@ -179,11 +188,7 @@ export default function CCApplicationForm() {
         if (key.startsWith('social_links_')) return;
         if (value === undefined || value === null) return;
 
-        if (key === 'typical_streaming_days') {
-           formData.append(key, JSON.stringify(value));
-        } else {
-           formData.append(key, value.toString());
-        }
+        formData.append(key, value.toString());
       });
 
       const socialLinks: any = {};
@@ -205,7 +210,8 @@ export default function CCApplicationForm() {
       if (!res.ok) throw new Error(result.error || "Submission failed");
 
       toast.success("Application submitted successfully!");
-      router.push('/join-us?success=true');
+      setIsSuccess(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -254,6 +260,28 @@ export default function CCApplicationForm() {
       {errors[name] && <p className="text-red-500 text-xs">{errors[name]?.message as string}</p>}
     </div>
   );
+
+  if (isSuccess) {
+    return (
+      <Card className="max-w-2xl mx-auto py-8">
+        <CardContent className="flex flex-col items-center text-center space-y-4">
+          <div className="rounded-full bg-green-500/20 p-4">
+            <CheckCircle2 className="h-12 w-12 text-green-500" />
+          </div>
+          <h2 className="text-2xl font-bold">Application Submitted!</h2>
+          <p className="text-muted-foreground max-w-md">
+            Thank you for applying to be a Content Creator at Raptor Esports. We will review your application and get back to you soon.
+          </p>
+          <div className="flex gap-4 pt-4">
+            <Button variant="outline" onClick={() => router.push('/')}>Return Home</Button>
+            <Button onClick={() => window.open(process.env.NEXT_PUBLIC_DISCORD_INVITE || 'https://discord.gg/raptoresports', '_blank')}>
+              Join Discord
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-2xl mx-auto py-4">
@@ -342,10 +370,14 @@ export default function CCApplicationForm() {
                 <Label>Avg Growth (Last 30 Days)</Label>
                 <Input type="number" {...register("avg_growth_last_30_days", { valueAsNumber: true })} />
               </div>
-              <div className="space-y-2">
-                <Label>Screenshot of Growth (Required if growth provided)</Label>
-                <Input type="file" accept="image/*" onChange={(e) => setGrowthFile(e.target.files?.[0] || null)} />
-              </div>
+              {/* Show file upload if growth is > 0 */}
+              {(avgGrowth && avgGrowth > 0) ? (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                  <Label>Screenshot of Growth *</Label>
+                  <Input type="file" accept="image/*" onChange={(e) => setGrowthFile(e.target.files?.[0] || null)} />
+                  <p className="text-xs text-muted-foreground">Required because you entered a growth value.</p>
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -361,29 +393,6 @@ export default function CCApplicationForm() {
                 <Label>Avg Stream Duration (Hours) *</Label>
                 <Input type="number" step="0.1" {...register("avg_stream_duration", { valueAsNumber: true })} />
                 <Warning show={avgStreamDuration > 0 && avgStreamDuration < 1.5} message="Recommended: 1.5+ hours" />
-              </div>
-              <div className="space-y-2">
-                <Label className="mb-2 block">Typical Streaming Days *</Label>
-                <div className="flex flex-wrap gap-2">
-                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                    <div key={day} className="flex items-center space-x-2 border p-2 rounded-md hover:bg-accent cursor-pointer" onClick={() => {
-                        const current = getValues("typical_streaming_days");
-                        if (current.includes(day)) form.setValue("typical_streaming_days", current.filter(d => d !== day));
-                        else form.setValue("typical_streaming_days", [...current, day]);
-                    }}>
-                      <Checkbox
-                        id={`day-${day}`}
-                        checked={typicalStreamingDays.includes(day)}
-                        onCheckedChange={(checked) => {
-                          if (checked) form.setValue("typical_streaming_days", [...typicalStreamingDays, day]);
-                          else form.setValue("typical_streaming_days", typicalStreamingDays.filter(d => d !== day));
-                        }}
-                      />
-                      <Label htmlFor={`day-${day}`} className="cursor-pointer">{day}</Label>
-                    </div>
-                  ))}
-                </div>
-                <Warning show={typicalStreamingDays.length > 0 && typicalStreamingDays.length < 4} message="Recommended: 4+ days" />
               </div>
               <BooleanField name="fixed_schedule" label="Do you have a fixed schedule?" control={control} />
             </div>
