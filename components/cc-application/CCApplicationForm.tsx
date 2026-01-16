@@ -34,7 +34,7 @@ const formSchema = z.object({
   // Section 2: Platform Metrics
   instagram_follower_count: z.number().optional(),
   youtube_subscriber_count: z.number().optional(),
-  avg_growth_last_30_days: z.number().optional(),
+  avg_growth_last_30_days: z.union([z.number(), z.nan()]).optional(),
 
   // Section 3: Streaming Habits
   streams_per_week: z.number().min(0),
@@ -145,7 +145,7 @@ export default function CCApplicationForm() {
     mode: "onChange"
   });
 
-  const { watch, control, register, formState: { errors }, trigger, getValues } = form;
+  const { watch, control, register, formState: { errors }, trigger, getValues, setValue } = form;
   const primaryPlatform = watch("primary_platform");
   const streamsPerWeek = watch("streams_per_week");
   const avgStreamDuration = watch("avg_stream_duration");
@@ -156,9 +156,20 @@ export default function CCApplicationForm() {
   const avgReelViews = watch("avg_views_last_5_reels");
   const inactivityGap = watch("longest_inactivity_gap_days");
   const missedStreams = watch("missed_planned_streams");
+  const avgGrowth = watch("avg_growth_last_30_days");
 
   const nextStep = async () => {
     const fields = steps[currentStep].fields;
+
+    // Custom check for Step 1 (Metrics): Screenshot required if growth > 0
+    if (currentStep === 1) { // Step index 1 is 'metrics' in the steps array
+       const growth = getValues("avg_growth_last_30_days");
+       if (growth && growth > 0 && !growthFile) {
+           toast.error("Please upload a screenshot proof for your growth metrics.");
+           return;
+       }
+    }
+
     const isValid = await trigger(fields as any);
     if (isValid) {
       setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
@@ -366,10 +377,14 @@ export default function CCApplicationForm() {
                 <Label>Avg Growth (Last 30 Days)</Label>
                 <Input type="number" {...register("avg_growth_last_30_days", { valueAsNumber: true })} />
               </div>
-              <div className="space-y-2">
-                <Label>Screenshot of Growth (Required if growth provided)</Label>
-                <Input type="file" accept="image/*" onChange={(e) => setGrowthFile(e.target.files?.[0] || null)} />
-              </div>
+              {/* Show file upload if growth is > 0 */}
+              {(avgGrowth && avgGrowth > 0) ? (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                  <Label>Screenshot of Growth *</Label>
+                  <Input type="file" accept="image/*" onChange={(e) => setGrowthFile(e.target.files?.[0] || null)} />
+                  <p className="text-xs text-muted-foreground">Required because you entered a growth value.</p>
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -391,23 +406,24 @@ export default function CCApplicationForm() {
                 <div className="flex flex-wrap gap-2">
                   {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
                     <div key={day} className="flex items-center space-x-2 border p-2 rounded-md hover:bg-accent cursor-pointer" onClick={() => {
-                        const current = getValues("typical_streaming_days");
-                        if (current.includes(day)) form.setValue("typical_streaming_days", current.filter(d => d !== day));
-                        else form.setValue("typical_streaming_days", [...current, day]);
+                        const current = getValues("typical_streaming_days") || [];
+                        if (current.includes(day)) setValue("typical_streaming_days", current.filter(d => d !== day));
+                        else setValue("typical_streaming_days", [...current, day]);
                     }}>
                       <Checkbox
                         id={`day-${day}`}
-                        checked={typicalStreamingDays.includes(day)}
+                        checked={(typicalStreamingDays || []).includes(day)}
                         onCheckedChange={(checked) => {
-                          if (checked) form.setValue("typical_streaming_days", [...typicalStreamingDays, day]);
-                          else form.setValue("typical_streaming_days", typicalStreamingDays.filter(d => d !== day));
+                          const current = getValues("typical_streaming_days") || [];
+                          if (checked) setValue("typical_streaming_days", [...current, day]);
+                          else setValue("typical_streaming_days", current.filter(d => d !== day));
                         }}
                       />
                       <Label htmlFor={`day-${day}`} className="cursor-pointer">{day}</Label>
                     </div>
                   ))}
                 </div>
-                <Warning show={typicalStreamingDays.length > 0 && typicalStreamingDays.length < 4} message="Recommended: 4+ days" />
+                <Warning show={(typicalStreamingDays || []).length > 0 && (typicalStreamingDays || []).length < 4} message="Recommended: 4+ days" />
               </div>
               <BooleanField name="fixed_schedule" label="Do you have a fixed schedule?" control={control} />
             </div>
