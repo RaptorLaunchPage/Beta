@@ -6,11 +6,11 @@ import { PublicFooter } from "@/components/public/PublicFooter";
 import { FadeInOnScroll } from "@/components/ui/fade-in-on-scroll";
 
 export const metadata: Metadata = {
-  title: "CC Application | Raptor Esports",
+  title: "Apply | Raptor Esports",
   description: "Apply to become a content creator for Raptor Esports.",
 };
 
-export default function CCApplicationPage() {
+export default function ApplyPage() {
   return (
     <VideoBackground>
       <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto">
