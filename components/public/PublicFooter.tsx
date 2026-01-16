@@ -11,14 +11,6 @@ export function PublicFooter() {
         <span className="hidden sm:inline">© {new Date().getFullYear()} Raptor Esports</span>
         <span className="sm:hidden">© {new Date().getFullYear()} Raptor</span>
       </div>
-      <div className="flex items-center gap-3">
-        <a aria-label="Instagram" href="https://www.instagram.com/rexigris?igsh=MXVxMDFpMXNhYWQ1cQ==" target="_blank" rel="noreferrer" className="hover:text-white inline-flex">
-          <Instagram className="h-4 w-4" />
-        </a>
-        <a aria-label="Discord" href="https://discord.gg/tjTjMpHvpa" target="_blank" rel="noreferrer" className="hover:text-white inline-flex">
-          <MessageCircle className="h-4 w-4" />
-        </a>
-      </div>
     </footer>
   )
 }

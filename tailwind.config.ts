@@ -98,8 +98,8 @@ const config: Config = {
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
 			'accordion-up': 'accordion-up 0.2s ease-out',
-			marquee: 'marquee 40s linear infinite',
-			'marquee-reverse': 'marquee-reverse 40s linear infinite'
+			marquee: 'marquee 60s linear infinite',
+			'marquee-reverse': 'marquee-reverse 60s linear infinite'
   		}
   	}
   },

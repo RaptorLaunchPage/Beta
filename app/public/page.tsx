@@ -6,6 +6,7 @@ import { FadeInOnScroll } from "@/components/ui/fade-in-on-scroll"
 import { PublicNavigation } from "@/components/public/PublicNavigation"
 import { PublicFooter } from "@/components/public/PublicFooter"
 import { StatsMarquee } from "@/components/public/StatsMarquee"
+import { SocialsSection } from "@/components/public/SocialsSection"
 import { getButtonStyle } from "@/lib/global-theme"
 import Link from "next/link"
 
@@ -66,6 +67,11 @@ export default function PublicSitePage() {
             <section className="w-full">
               <StatsMarquee stats={stats} />
             </section>
+          </FadeInOnScroll>
+
+          {/* Socials Section */}
+          <FadeInOnScroll delayMs={400}>
+             <SocialsSection />
           </FadeInOnScroll>
 
         </div>
