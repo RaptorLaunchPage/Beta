@@ -165,7 +165,6 @@ export function ProfileSearch() {
       case 'analyst': return 'bg-green-500'
       case 'player': return 'bg-orange-500'
       case 'pending_player': return 'bg-yellow-500'
-      case 'tryout': return 'bg-gray-500'
       default: return 'bg-gray-400'
     }
   }
@@ -221,7 +220,6 @@ export function ProfileSearch() {
                 <SelectItem value="analyst">Analyst</SelectItem>
                 <SelectItem value="player">Player</SelectItem>
                 <SelectItem value="pending_player">Pending Player</SelectItem>
-                <SelectItem value="tryout">Tryout</SelectItem>
               </SelectContent>
             </Select>
             

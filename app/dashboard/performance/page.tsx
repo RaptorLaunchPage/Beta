@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { PerformanceDashboard } from "@/components/performance/performance-dashboard"
 import { EnhancedPlayerPerformanceSubmit } from "@/components/performance/enhanced-player-performance-submit"
-import { ScrimAttendance } from "@/components/attendance/scrim-attendance"
 import { SendToDiscordButton } from "@/components/discord-portal/send-to-discord-button"
 import { 
   Target, 
@@ -207,7 +206,6 @@ export default function PerformancePage() {
   const canUseOCR = performancePermissions.canCreate && ['admin', 'manager', 'coach'].includes(userRole)
   const canSubmitPerformance = userRole === 'player'
   const canStaffSubmit = ['admin', 'manager', 'coach'].includes(userRole)
-  const canViewAttendance = ['admin', 'manager', 'coach', 'player'].includes(userRole)
 
   // Auto-select team for players and reset player filter when team changes
   useEffect(() => {
@@ -396,7 +394,7 @@ export default function PerformancePage() {
   const requiresUsers = canViewDashboard || canStaffSubmit || canUseOCR
 
   // If user has no access to any tab, render nothing
-      if (!canViewDashboard && !canStaffSubmit && !canUseOCR && !canSubmitPerformance && !canViewAttendance) {
+      if (!canViewDashboard && !canStaffSubmit && !canUseOCR && !canSubmitPerformance) {
     return null
   }
 
@@ -494,12 +492,6 @@ export default function PerformancePage() {
             label: "Submit Performance",
             icon: Plus,
             hidden: !canSubmitPerformance && !canStaffSubmit
-          },
-          {
-            value: "attendance",
-            label: "Match Attendance",
-            icon: Calendar,
-            hidden: !canViewAttendance
           }
         ].filter(tab => !tab.hidden)}
         defaultValue="dashboard"
@@ -816,25 +808,6 @@ export default function PerformancePage() {
                     return <div className="text-center py-8 text-red-500">An error occurred while loading the performance form. Please contact support.</div>
                   }
                 })()}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
-
-        {canViewAttendance && (
-          <TabsContent value="attendance">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Match Attendance Log
-                </CardTitle>
-                <CardDescription>
-                  View automatically generated attendance records from match performances
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrimAttendance />
               </CardContent>
             </Card>
           </TabsContent>

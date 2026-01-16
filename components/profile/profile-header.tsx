@@ -74,7 +74,6 @@ export function ProfileHeader({ profile, viewerProfile, onEdit, isEditing, showA
       case 'analyst': return 'bg-green-500'
       case 'player': return 'bg-orange-500'
       case 'pending_player': return 'bg-yellow-500'
-      case 'tryout': return 'bg-gray-500'
       default: return 'bg-gray-400'
     }
   }

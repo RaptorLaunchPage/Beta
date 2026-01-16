@@ -87,26 +87,6 @@ export const DASHBOARD_MODULES: DashboardModule[] = [
     mobileOrder: 8
   },
   {
-    id: 'attendance',
-    title: 'Attendance',
-    description: 'Track practice and match attendance',
-    icon: 'CalendarCheck',
-    path: '/dashboard/attendance',
-    allowedRoles: ['admin', 'manager', 'coach', 'player', 'analyst'],
-    showInNavigation: true,
-    mobileOrder: 4
-  },
-  {
-    id: 'tryouts',
-    title: 'Tryouts',
-    description: 'Manage team tryouts and player recruitment',
-    icon: 'UserPlus',
-    path: '/dashboard/tryouts',
-    allowedRoles: ['admin', 'manager', 'coach'],
-    showInNavigation: true,
-    mobileOrder: 5
-  },
-  {
     id: 'discord-portal',
     title: 'Discord Portal',
     description: 'Discord notifications and webhook management',
@@ -117,42 +97,12 @@ export const DASHBOARD_MODULES: DashboardModule[] = [
     mobileOrder: 9
   },
   {
-    id: 'admin-settings',
-    title: 'System Settings',
-    description: 'System configuration and agreement enforcement',
-    icon: 'Settings',
-    path: '/dashboard/admin/settings',
-    allowedRoles: ['admin'],
-    showInNavigation: true,
-    mobileOrder: 10
-  },
-  {
-    id: 'agreement-management',
-    title: 'Agreement Management',
-    description: 'Create and edit user agreements',
-    icon: 'FileText',
-    path: '/dashboard/admin/agreements',
-    allowedRoles: ['admin'],
-    showInNavigation: true,
-    mobileOrder: 11
-  },
-  {
     id: 'cc-applications',
     title: 'CC Applications',
     description: 'Manage content creator applications',
     icon: 'Video',
     path: '/dashboard/admin/cc-applications',
     allowedRoles: ['admin', 'manager'],
-    showInNavigation: true,
-    mobileOrder: 12
-  },
-  {
-    id: 'media',
-    title: 'Media',
-    description: 'Upload and manage media assets',
-    icon: 'FileText',
-    path: '/dashboard/media',
-    allowedRoles: ['admin', 'manager', 'coach', 'analyst'],
     showInNavigation: true,
     mobileOrder: 12
   },

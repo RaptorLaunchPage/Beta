@@ -61,18 +61,6 @@ const DASHBOARD_WIDGETS: DashboardWidget[] = [
     }
   },
   {
-    id: 'system-health',
-    title: 'System Health',
-    description: 'Platform status',
-    icon: Settings,
-    allowedRoles: ['admin'],
-    priority: 2,
-    action: {
-      label: 'View Settings',
-      href: '/dashboard/admin/settings'
-    }
-  },
-  {
     id: 'financial-overview',
     title: 'Financial Overview',
     description: 'Total revenue and expenses',
@@ -110,18 +98,6 @@ const DASHBOARD_WIDGETS: DashboardWidget[] = [
       href: '/dashboard/team-management/teams'
     }
   },
-  {
-    id: 'attendance-rate',
-    title: 'Attendance Rate',
-    description: 'Weekly attendance average',
-    icon: CalendarCheck,
-    allowedRoles: ['admin', 'manager', 'coach'],
-    priority: 3,
-    action: {
-      label: 'View Attendance',
-      href: '/dashboard/attendance'
-    }
-  },
 
   // Coach Widgets
   {
@@ -134,18 +110,6 @@ const DASHBOARD_WIDGETS: DashboardWidget[] = [
     action: {
       label: 'Track Performance',
       href: '/dashboard/performance'
-    }
-  },
-  {
-    id: 'upcoming-sessions',
-    title: 'Upcoming Sessions',
-    description: 'Scheduled training sessions',
-    icon: CalendarCheck,
-    allowedRoles: ['admin', 'manager', 'coach', 'player'],
-    priority: 2,
-    action: {
-      label: 'View Schedule',
-      href: '/dashboard/attendance'
     }
   },
 
@@ -216,12 +180,6 @@ const QUICK_ACTIONS: Record<UserRole, Array<{
       description: 'Register a new team member'
     },
     {
-      label: 'System Settings',
-      href: '/dashboard/admin/settings',
-      icon: Settings,
-      description: 'Configure platform settings'
-    },
-    {
       label: 'View Reports',
       href: '/dashboard/analytics',
       icon: BarChart3,
@@ -252,12 +210,6 @@ const QUICK_ACTIONS: Record<UserRole, Array<{
       href: '/dashboard/analytics',
       icon: TrendingUp,
       description: 'Analyze team performance'
-    },
-    {
-      label: 'Schedule Management',
-      href: '/dashboard/attendance',
-      icon: CalendarCheck,
-      description: 'Manage training schedules'
     }
   ],
   coach: [
@@ -266,12 +218,6 @@ const QUICK_ACTIONS: Record<UserRole, Array<{
       href: '/dashboard/performance',
       icon: Target,
       description: 'Record player stats'
-    },
-    {
-      label: 'Attendance',
-      href: '/dashboard/attendance',
-      icon: CalendarCheck,
-      description: 'Mark attendance'
     },
     {
       label: 'Team Analytics',
@@ -573,8 +519,6 @@ function getWidgetValue(widgetId: string, stats?: any): string | number {
       return stats.avgPerformance ? `${stats.avgPerformance}%` : '—'
     case 'active-teams':
       return stats.activeTeams || 0
-    case 'attendance-rate':
-      return stats.attendanceRate ? `${stats.attendanceRate}%` : '—'
     case 'personal-stats':
       return stats.personalScore || '—'
     case 'recent-matches':
@@ -592,8 +536,6 @@ function getWidgetChange(widgetId: string, stats?: any): string | null {
   switch (widgetId) {
     case 'team-performance':
       return stats.performanceChange ? `+${stats.performanceChange}%` : null
-    case 'attendance-rate':
-      return stats.attendanceChange ? `+${stats.attendanceChange}%` : null
     default:
       return null
   }
@@ -631,12 +573,7 @@ function getRoleAlerts(role: UserRole, profile: any): Array<{
   // Role-specific alerts
   switch (role) {
     case 'admin':
-      alerts.push({
-        type: 'blue' as const,
-        title: 'System Update Available',
-        message: 'New features and security updates are available for the platform.',
-        action: { label: 'View Updates', href: '/dashboard/admin/settings' }
-      })
+      // System update alert removed as settings module is gone
       break
     
     case 'player':
