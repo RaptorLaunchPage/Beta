@@ -83,49 +83,6 @@ export async function GET(request: NextRequest) {
     const { data, error: queryError } = await query.order('session_subtype')
 
     if (queryError) {
-      // If table doesn't exist, return default configurations
-      if (queryError.code === '42P01') {
-        const defaultConfigs = [
-          {
-            id: 'default-morning',
-            team_id: null,
-            session_subtype: 'Morning',
-            start_time: '06:00',
-            end_time: '10:00',
-            cutoff_time: '12:00',
-            is_active: true,
-            created_by: userData!.id,
-            teams: null
-          },
-          {
-            id: 'default-evening',
-            team_id: null,
-            session_subtype: 'Evening',
-            start_time: '16:00',
-            end_time: '20:00',
-            cutoff_time: '12:00',
-            is_active: true,
-            created_by: userData!.id,
-            teams: null
-          },
-          {
-            id: 'default-night',
-            team_id: null,
-            session_subtype: 'Night',
-            start_time: '21:00',
-            end_time: '23:59',
-            cutoff_time: '12:00',
-            is_active: true,
-            created_by: userData!.id,
-            teams: null
-          }
-        ]
-        
-        return NextResponse.json({
-          configs: defaultConfigs
-        })
-      }
-
       console.error('Error fetching practice configs:', queryError)
       return NextResponse.json(
         { error: 'Failed to fetch configurations' },
